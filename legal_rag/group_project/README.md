@@ -170,8 +170,51 @@ run_dashboard()
 
 ## Kiến Trúc Hệ Thống
 
+Hệ thống RAG Chatbot được xây dựng theo mô hình Pipeline kết hợp Hybrid Search, Reranking và PageIndex Fallback:
+
 ```
-[Vẽ diagram kiến trúc ở đây]
+                  +----------------------------------------------+
+                  |            Streamlit Chatbot UI              |
+                  +----------------------+-----------------------+
+                                         |
+                                         | (User Query)
+                                         v
+                  +----------------------------------------------+
+                  |         Query Rewriting (with Memory)        |
+                  +----------------------+-----------------------+
+                                         |
+                                         | (Standalone Query)
+                                         v
+                         +---------------+---------------+
+                         |                               |
+                         v (Semantic Search)             v (Lexical Search)
+                  +--------------+               +--------------+
+                  |   ChromaDB   |               |     BM25     |
+                  +------+-------+               +------+-------+
+                         |                               |
+                         +---------------+---------------+
+                                         |
+                                         | (Retrieve Candidates)
+                                         v
+                  +----------------------------------------------+
+                  |         Reciprocal Rank Fusion (RRF)         |
+                  +----------------------+-----------------------+
+                                         |
+                                         | (Fused Candidates)
+                                         v
+                  +----------------------------------------------+
+                  |            Cross-Encoder Rerank              |
+                  +----------------------+-----------------------+
+                                         |
+                                         | (Score Threshold Check)
+             [Score >= 0.3]              |             [Score < 0.3]
+          +------------------------------+------------------------------+
+          |                                                             |
+          v                                                             v
++------------------+                                          +------------------+
+| LLM gpt-4o-mini  |                                          |    PageIndex     |
+|   Generation     |                                          |  Vectorless RAG  |
++------------------+                                          +------------------+
 ```
 
 ---
@@ -180,25 +223,24 @@ run_dashboard()
 
 | Thành viên | MSSV | Nhiệm vụ | Trạng thái |
 |-----------|------|----------|------------|
-| | | | |
-| | | | |
-| | | | |
-| | | | |
+| **Lê Đức Việt** | **2A202600959** | Thiết lập RAG Pipeline (Task 1-10) + ChromaDB + Crawl4AI | **Hoàn thành** |
+| **Nhóm** | | Xây dựng Streamlit UI + DeepEval Evaluation Pipeline | **Hoàn thành** |
 
 ---
 
 ## Hướng Dẫn Chạy
 
+### 1. Khởi chạy RAG Chatbot (Streamlit)
+Chạy lệnh sau tại thư mục gốc để mở giao diện Chatbot:
 ```bash
-# Cài đặt dependencies
-pip install -r requirements.txt
-
-# Chạy app
-streamlit run app.py
-# hoặc
-chainlit run app.py
+.venv\Scripts\streamlit run group_project/app.py
 ```
 
----
+### 2. Khởi chạy Pipeline đánh giá (DeepEval)
+Chạy lệnh sau tại thư mục gốc để thực hiện đánh giá A/B và xuất báo cáo `results.md`:
+```bash
+$env:PYTHONIOENCODING="utf-8"
+.venv\Scripts\python group_project/evaluation/eval_pipeline.py
+```
+Báo cáo đánh giá chi tiết sẽ được tự động xuất ra file: `group_project/evaluation/results.md`.
 
-## Lưu ý: Hãy giữ lại repo này nếu như bạn học track 3 giai đoạn 2, chúng ta sẽ phát triển tiếp dự án lên knowledge graph để khắc phục các câu hỏi hóc búa khi có các câu hỏi khó.

@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent System Latency Optimizer & Visualizer</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #060814;
+            --card-bg: #0e1329;
+            --card-border: rgba(99, 102, 241, 0.15);
+            --card-glow: rgba(99, 102, 241, 0.05);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #10b981; /* Emerald green for optimized */
+            --primary-glow: rgba(16, 185, 129, 0.25);
+            --secondary: #6366f1; /* Indigo for unoptimized */
+            --secondary-glow: rgba(99, 102, 241, 0.25);
+            --accent: #f59e0b; /* Amber */
+            --accent-glow: rgba(245, 158, 11, 0.25);
+            --danger: #ef4444;
+            --terminal-bg: #03050d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
+        }
+
+        /* Container & Layout */
+        .container {
+            max-width: 1400px;
+            width: 95vw;
+            margin: 0 auto;
+            padding: 30px 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 20px;
+        }
+
+        .header-title h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #f8fafc 40%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .header-title p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .badge-live {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-live .dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0.5; }
+        }
+
+        /* Mode Selector */
+        .mode-toggle {
+            display: flex;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .btn-mode {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-mode.active {
+            background-color: var(--secondary);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Playground Layout */
+        .playground-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        /* Side Control Panel */
+        .control-panel {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 30px var(--card-glow);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+            border-left: 4px solid var(--secondary);
+            padding-left: 10px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .select-input, .text-input {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .select-input:focus, .text-input:focus {
+            border-color: var(--secondary);
+        }
+
+        .text-input {
+            resize: none;
+            height: 100px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-run {
+            width: 100%;
+            background: linear-gradient(135deg, var(--secondary), #4f46e5);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-run:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-run:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Timings overview card */
+        .timing-overview {
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.01);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .timing-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .timing-val {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+        }
+
+        .timing-val.unopt { color: var(--secondary); }
+        .timing-val.opt { color: var(--primary); }
+        .timing-val.saved { color: var(--accent); }
+
+        /* Main Workspace */
+        .workspace {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Topologies & Visualization Grid */
+        .visualization-box {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 30px var(--card-glow);
+        }
+
+        .visual-tabs {
+            display: flex;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 12px 6px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1.05rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: #fff;
+            border-bottom-color: var(--secondary);
+        }
+
+        .tab-btn.active.opt-tab {
+            border-bottom-color: var(--primary);
+        }
+
+        /* SVG Graph Styling */
+        .graph-container {
+            width: 100%;
+            height: 280px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .node-rect {
+            fill: #131936;
+            stroke: #2e3c75;
+            stroke-width: 2;
+            rx: 10px;
+            transition: all 0.4s ease;
+        }
+
+        .node-circle {
+            fill: #131936;
+            stroke: #2e3c75;
+            stroke-width: 2;
+            transition: all 0.4s ease;
+        }
+
+        .node-text {
+            fill: #cbd5e1;
+            font-size: 11px;
+            font-weight: 500;
+            text-anchor: middle;
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+        }
+
+        .node-title {
+            fill: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            text-anchor: middle;
+            font-family: 'Outfit', sans-serif;
+            pointer-events: none;
+        }
+
+        .edge-path {
+            stroke: #242f5e;
+            stroke-width: 2.5;
+            fill: none;
+            transition: all 0.4s ease;
+        }
+
+        /* Interactive states */
+        .node.running .node-rect {
+            stroke: var(--accent);
+            fill: rgba(245, 158, 11, 0.08);
+            animation: pulse-node-accent 1.5s infinite alternate;
+        }
+
+        .node.running .node-circle {
+            stroke: var(--accent);
+            fill: rgba(245, 158, 11, 0.08);
+            animation: pulse-node-accent 1.5s infinite alternate;
+        }
+
+        .node.completed .node-rect {
+            stroke: var(--primary);
+            fill: rgba(16, 185, 129, 0.06);
+        }
+        
+        .node.completed .node-circle {
+            stroke: var(--primary);
+            fill: rgba(16, 185, 129, 0.06);
+        }
+
+        .node.completed .node-title {
+            fill: var(--primary);
+        }
+
+        .node.bypassed .node-rect {
+            stroke: #334155;
+            stroke-dasharray: 4, 4;
+            fill: #080a14;
+            opacity: 0.5;
+        }
+
+        .node.bypassed .node-title, .node.bypassed .node-text {
+            fill: #475569 !important;
+        }
+
+        .edge-path.active {
+            stroke: var(--accent);
+            stroke-dasharray: 6, 6;
+            animation: dash-flow 1.5s linear infinite;
+        }
+
+        .edge-path.completed {
+            stroke: var(--primary);
+        }
+
+        @keyframes dash-flow {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+
+        @keyframes pulse-node-accent {
+            0% { filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.4)); }
+            100% { filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.8)); }
+        }
+
+        /* Results & Console Box */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .console-card, .output-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 30px var(--card-glow);
+            display: flex;
+            flex-direction: column;
+            height: 400px;
+        }
+
+        .console-header, .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .console-body {
+            background-color: var(--terminal-bg);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            color: #38bdf8;
+            padding: 16px;
+            overflow-y: auto;
+            flex-grow: 1;
+            white-space: pre-wrap;
+        }
+
+        .output-body {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-main);
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 8px;
+        }
+
+        .output-body h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            color: var(--primary);
+            margin: 20px 0 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 4px;
+        }
+
+        .output-body h2:first-of-type {
+            margin-top: 0;
+        }
+
+        .output-body p {
+            color: #cbd5e1;
+            margin-bottom: 14px;
+        }
+
+        .output-body ul {
+            margin-left: 20px;
+            margin-bottom: 14px;
+            color: #cbd5e1;
+        }
+
+        /* Performance comparison */
+        .chart-box {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 10px 30px var(--card-glow);
+        }
+
+        .chart-flex {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .comparative-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .bar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .bar-track {
+            height: 24px;
+            background-color: rgba(255, 255, 255, 0.04);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 5px;
+            width: 0;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            padding-left: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+
+        .bar-fill.unopt {
+            background: linear-gradient(90deg, var(--secondary), #4f46e5);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+        }
+
+        .bar-fill.opt {
+            background: linear-gradient(90deg, var(--primary), #059669);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Explanations Grid */
+        .optimizations-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .opt-card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .opt-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary);
+            background-color: rgba(16, 185, 129, 0.02);
+        }
+
+        .opt-header-icon {
+            font-size: 1.8rem;
+            margin-bottom: 12px;
+        }
+
+        .opt-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .opt-desc {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .savings-tag {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        /* Marker definitions for SVG arrows */
+        .arrow-head {
+            fill: #242f5e;
+        }
+        .arrow-head.active {
+            fill: var(--accent);
+        }
+        .arrow-head.completed {
+            fill: var(--primary);
+        }
+
+        .log-timestamp {
+            color: #64748b;
+            margin-right: 8px;
+        }
+        
+        .log-node {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .log-info {
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-title">
+                <h1>Đo lường & Tối ưu hóa Latency Multi-Agent</h1>
+                <p>Trực quan hóa đồ thị LangGraph và so sánh hiệu năng của các tác nhân pháp lý (Stage 4)</p>
+            </div>
+            
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div id="backend-status" class="badge-live" style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.4); color: var(--danger);">
+                    <div class="dot" style="background-color: var(--danger); animation: none;"></div>
+                    <span>Backend Offline</span>
+                </div>
+                
+                <div class="mode-toggle">
+                    <button id="mode-sim" class="btn-mode active" onclick="setPlaygroundMode('simulation')">Mô phỏng</button>
+                    <button id="mode-live" class="btn-mode" onclick="setPlaygroundMode('live')">API Thực tế</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <div class="playground-grid">
+            
+            <!-- Controls Panel -->
+            <div class="control-panel">
+                <div class="form-group">
+                    <span class="section-title">Cài đặt Demo</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="question-select">Chọn Câu Hỏi mẫu</label>
+                    <select id="question-select" class="select-input" onchange="onSelectQuestion()">
+                        <option value="q1">Vi phạm hợp đồng + Trốn thuế (Có chuyên gia)</option>
+                        <option value="q2">Tranh chấp hợp đồng đơn thuần (Không cần chuyên gia)</option>
+                        <option value="custom">-- Nhập câu hỏi tự do --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="question-text">Nội dung câu hỏi</label>
+                    <textarea id="question-text" class="text-input" disabled>If a company breaks a contract and avoids taxes, what are the legal and regulatory consequences?</textarea>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 10px;">
+                    <button id="btn-run-unopt" class="btn-run" onclick="startExecution('unoptimized')" style="background: linear-gradient(135deg, var(--secondary), #4f46e5); flex: 1;">
+                        Chạy Unopt ◀
+                    </button>
+                    <button id="btn-run-opt" class="btn-run" onclick="startExecution('optimized')" style="background: linear-gradient(135deg, var(--primary), #059669); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2); flex: 1;">
+                        Chạy Opt ▶
+                    </button>
+                </div>
+
+                <div class="timing-overview">
+                    <label>Kết quả đo đạc gần nhất</label>
+                    <div class="timing-row">
+                        <span style="color: var(--text-muted);">Trước tối ưu (Unopt):</span>
+                        <span id="timing-unopt-val" class="timing-val unopt">--</span>
+                    </div>
+                    <div class="timing-row">
+                        <span style="color: var(--text-muted);">Sau tối ưu (Opt):</span>
+                        <span id="timing-opt-val" class="timing-val opt">--</span>
+                    </div>
+                    <div class="timing-row" style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+                        <span style="font-weight: 600;">Thời gian giảm:</span>
+                        <span id="timing-saved-val" class="timing-val saved">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization Workspace -->
+            <div class="workspace">
+                
+                <!-- Topology Graph Visualizer -->
+                <div class="visualization-box">
+                    <div class="visual-tabs">
+                        <button id="tab-unopt" class="tab-btn active" onclick="switchVisualTab('unoptimized')">Sơ đồ Luồng Tuần tự (Chưa Tối ưu)</button>
+                        <button id="tab-opt" class="tab-btn opt-tab" onclick="switchVisualTab('optimized')">Sơ đồ Luồng Song song & Định tuyến nhanh (Đã Tối ưu)</button>
+                    </div>
+
+                    <!-- Graph Unoptimized SVG -->
+                    <div id="graph-unoptimized" class="graph-container">
+                        <svg viewBox="0 0 800 240">
+                            <defs>
+                                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 1 L 10 5 L 0 9 z" class="arrow-head" id="arrow-unopt-head"/>
+                                </marker>
+                            </defs>
+                            
+                            <!-- Connectors -->
+                            <path id="unopt-edge-start-law" d="M 90 120 L 140 120" class="edge-path" marker-end="url(#arrow)" />
+                            <path id="unopt-edge-law-route" d="M 260 120 L 310 120" class="edge-path" marker-end="url(#arrow)" />
+                            <path id="unopt-edge-route-tax" d="M 410 100 Q 440 60 480 60" class="edge-path" marker-end="url(#arrow)" />
+                            <path id="unopt-edge-route-comp" d="M 410 140 Q 440 180 480 180" class="edge-path" marker-end="url(#arrow)" />
+                            <path id="unopt-edge-tax-agg" d="M 580 60 Q 620 60 650 100" class="edge-path" marker-end="url(#arrow)" />
+                            <path id="unopt-edge-comp-agg" d="M 580 180 Q 620 180 650 140" class="edge-path" marker-end="url(#arrow)" />
+                            <path id="unopt-edge-agg-end" d="M 750 120 L 770 120" class="edge-path" marker-end="url(#arrow)" />
+
+                            <!-- START Node -->
+                            <g id="unopt-node-START" class="node">
+                                <circle cx="60" cy="120" r="30" class="node-circle" style="stroke: #10b981;" />
+                                <text x="60" y="124" class="node-title" style="fill: #10b981;">START</text>
+                            </g>
+
+                            <!-- analyze_law Node -->
+                            <g id="unopt-node-analyze_law" class="node">
+                                <rect x="140" y="95" width="120" height="50" class="node-rect" />
+                                <text x="200" y="118" class="node-title">analyze_law</text>
+                                <text x="200" y="134" class="node-text">Pháp lý chung</text>
+                            </g>
+
+                            <!-- check_routing Node -->
+                            <g id="unopt-node-check_routing" class="node">
+                                <rect x="310" y="95" width="100" height="50" class="node-rect" />
+                                <text x="360" y="118" class="node-title">check_routing</text>
+                                <text x="360" y="134" class="node-text">Định tuyến LLM</text>
+                            </g>
+
+                            <!-- call_tax_specialist Node -->
+                            <g id="unopt-node-call_tax_specialist" class="node">
+                                <rect x="480" y="35" width="100" height="50" class="node-rect" />
+                                <text x="530" y="58" class="node-title">tax_specialist</text>
+                                <text x="530" y="74" class="node-text">ReAct Loop</text>
+                            </g>
+
+                            <!-- call_compliance_specialist Node -->
+                            <g id="unopt-node-call_compliance_specialist" class="node">
+                                <rect x="480" y="155" width="100" height="50" class="node-rect" />
+                                <text x="530" y="178" class="node-title">comp_specialist</text>
+                                <text x="530" y="194" class="node-text">ReAct Loop</text>
+                            </g>
+
+                            <!-- aggregate Node -->
+                            <g id="unopt-node-aggregate" class="node">
+                                <rect x="650" y="95" width="100" height="50" class="node-rect" />
+                                <text x="700" y="118" class="node-title">aggregate</text>
+                                <text x="700" y="134" class="node-text">Tổng hợp LLM</text>
+                            </g>
+
+                            <!-- END Node -->
+                            <g id="unopt-node-END" class="node">
+                                <circle cx="785" cy="120" r="15" class="node-circle" style="stroke: #ef4444;" />
+                                <text x="785" y="124" class="node-title" style="fill: #ef4444; font-size: 9px;">END</text>
+                            </g>
+                        </svg>
+                    </div>
+
+                    <!-- Graph Optimized SVG -->
+                    <div id="graph-optimized" class="graph-container" style="display: none;">
+                        <svg viewBox="0 0 800 240">
+                            <defs>
+                                <marker id="arrow-opt" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 1 L 10 5 L 0 9 z" class="arrow-head" id="arrow-opt-head"/>
+                                </marker>
+                            </defs>
+                            
+                            <!-- Connectors -->
+                            <!-- Start connects to both in parallel -->
+                            <path id="opt-edge-start-law" d="M 90 110 Q 120 60 150 60" class="edge-path" marker-end="url(#arrow-opt)" />
+                            <path id="opt-edge-start-route" d="M 90 130 Q 120 180 150 180" class="edge-path" marker-end="url(#arrow-opt)" />
+                            
+                            <!-- Check Routing connects to Specialists -->
+                            <path id="opt-edge-route-tax" d="M 250 180 Q 300 180 340 140" class="edge-path" marker-end="url(#arrow-opt)" />
+                            <path id="opt-edge-route-comp" d="M 250 185 Q 290 215 340 215" class="edge-path" marker-end="url(#arrow-opt)" />
+                            
+                            <!-- Analyze Law connects straight to Aggregate -->
+                            <path id="opt-edge-law-agg" d="M 270 60 H 570 Q 590 60 600 100" class="edge-path" marker-end="url(#arrow-opt)" />
+                            
+                            <!-- Specialists connect to Aggregate -->
+                            <path id="opt-edge-tax-agg" d="M 440 120 Q 500 120 590 120" class="edge-path" marker-end="url(#arrow-opt)" />
+                            <path id="opt-edge-comp-agg" d="M 440 215 Q 530 215 595 140" class="edge-path" marker-end="url(#arrow-opt)" />
+                            
+                            <!-- Aggregate to END -->
+                            <path id="opt-edge-agg-end" d="M 700 120 L 720 120" class="edge-path" marker-end="url(#arrow-opt)" />
+
+                            <!-- START Node -->
+                            <g id="opt-node-START" class="node">
+                                <circle cx="60" cy="120" r="30" class="node-circle" style="stroke: #10b981;" />
+                                <text x="60" y="124" class="node-title" style="fill: #10b981;">START</text>
+                            </g>
+
+                            <!-- analyze_law Node (Parallel Node 1) -->
+                            <g id="opt-node-analyze_law" class="node">
+                                <rect x="150" y="35" width="120" height="50" class="node-rect" />
+                                <text x="210" y="58" class="node-title">analyze_law</text>
+                                <text x="210" y="74" class="node-text">Pháp lý chung (Song song)</text>
+                            </g>
+
+                            <!-- check_routing Node (Parallel Node 2) -->
+                            <g id="opt-node-check_routing" class="node">
+                                <rect x="150" y="155" width="100" height="50" class="node-rect" />
+                                <text x="200" y="178" class="node-title">check_routing</text>
+                                <text x="200" y="194" class="node-text">Từ khóa (0ms) / LLM</text>
+                            </g>
+
+                            <!-- call_tax_specialist Node -->
+                            <g id="opt-node-call_tax_specialist" class="node">
+                                <rect x="340" y="95" width="100" height="50" class="node-rect" />
+                                <text x="390" y="118" class="node-title">tax_specialist</text>
+                                <text x="390" y="134" class="node-text">Direct 1-LLM Call</text>
+                            </g>
+
+                            <!-- call_compliance_specialist Node -->
+                            <g id="opt-node-call_compliance_specialist" class="node">
+                                <rect x="340" y="190" width="100" height="50" class="node-rect" />
+                                <text x="390" y="213" class="node-title">comp_specialist</text>
+                                <text x="390" y="229" class="node-text">Direct 1-LLM Call</text>
+                            </g>
+
+                            <!-- aggregate Node -->
+                            <g id="opt-node-aggregate" class="node">
+                                <rect x="600" y="95" width="100" height="50" class="node-rect" />
+                                <text x="650" y="118" class="node-title">aggregate</text>
+                                <text x="650" y="134" class="node-text">Tổng hợp LLM</text>
+                            </g>
+
+                            <!-- END Node -->
+                            <g id="opt-node-END" class="node">
+                                <circle cx="735" cy="120" r="15" class="node-circle" style="stroke: #ef4444;" />
+                                <text x="735" y="124" class="node-title" style="fill: #ef4444; font-size: 9px;">END</text>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Timings Breakdown & Log output -->
+                <div class="results-grid">
+                    <!-- Terminal Console Log -->
+                    <div class="console-card">
+                        <div class="console-header">
+                            <span style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem;">>_ Báo cáo Tiến trình & Logs</span>
+                            <span id="log-status" style="font-size: 0.8rem; color: var(--text-muted);">Đang chờ lệnh...</span>
+                        </div>
+                        <div id="console-output" class="console-body">Chưa chạy tiến trình nào. Nhấn "Chạy Unopt" hoặc "Chạy Opt" để bắt đầu.</div>
+                    </div>
+
+                    <!-- Rendered output -->
+                    <div class="output-card">
+                        <div class="output-header">
+                            <span style="font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem;">📜 Kết quả phản hồi pháp lý (Final Answer)</span>
+                            <button class="tab-btn" style="padding: 0; font-size: 0.8rem; border: none; color: var(--text-muted); cursor: pointer;" onclick="clearResponse()">Xóa kết quả</button>
+                        </div>
+                        <div id="response-output" class="output-body">
+                            <p style="color: var(--text-muted); font-style: italic;">Phản hồi từ Hệ thống Multi-Agent sẽ hiển thị ở đây sau khi hoàn tất xử lý...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Dashboard Charts -->
+                <div class="chart-box">
+                    <div class="section-title" style="margin-bottom: 20px;">Phân tích Hiệu Năng & Biểu Đồ So Sánh</div>
+                    
+                    <div class="chart-flex">
+                        <div class="comparative-bars">
+                            
+                            <div class="bar-container">
+                                <div class="bar-label">
+                                    <span>Chưa tối ưu (Unoptimized Workflow)</span>
+                                    <span id="bar-label-unopt" style="color: var(--secondary);">-- s</span>
+                                </div>
+                                <div class="bar-track">
+                                    <div id="bar-unopt" class="bar-fill unopt">0.0s</div>
+                                </div>
+                            </div>
+
+                            <div class="bar-container">
+                                <div class="bar-label">
+                                    <span>Đã tối ưu (Optimized Workflow)</span>
+                                    <span id="bar-label-opt" style="color: var(--primary);">-- s</span>
+                                </div>
+                                <div class="bar-track">
+                                    <div id="bar-opt" class="bar-fill opt">0.0s</div>
+                                </div>
+                            </div>
+                            
+                            <div id="savings-badge-wrapper" style="margin-top: 10px; display: none;">
+                                <div style="display: inline-flex; align-items: center; gap: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 12px 18px;">
+                                    <span style="font-size: 1.5rem;">⚡</span>
+                                    <div>
+                                        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 500;">Tốc độ xử lý tăng thêm</div>
+                                        <div id="savings-percentage" style="font-size: 1.3rem; font-weight: bold; color: var(--primary); font-family: 'Outfit';">--%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <h4 style="font-family: 'Outfit', sans-serif; font-size: 1.05rem; color: #fff;">Giải pháp tối ưu hóa đã áp dụng:</h4>
+                            
+                            <div class="optimizations-grid" style="grid-template-columns: 1fr; gap: 12px;">
+                                <div style="display: flex; gap: 12px; align-items: flex-start; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.03); padding: 12px; border-radius: 12px;">
+                                    <span style="font-size: 1.25rem;">🔗</span>
+                                    <div>
+                                        <h5 style="color: #fff; font-size: 0.95rem; font-family: 'Outfit'; margin-bottom: 2px;">Song song hóa Đồ thị (Graph Parallelization)</h5>
+                                        <p style="font-size: 0.82rem; color: var(--text-muted);">Khởi động Lead Attorney (analyze_law) và Router (check_routing) đồng thời từ START. Tiết kiệm 1 bước LLM tuần tự.</p>
+                                        <span class="savings-tag">~5 giây tiết kiệm</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 12px; align-items: flex-start; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.03); padding: 12px; border-radius: 12px;">
+                                    <span style="font-size: 1.25rem;">⚡</span>
+                                    <div>
+                                        <h5 style="color: #fff; font-size: 0.95rem; font-family: 'Outfit'; margin-bottom: 2px;">Định tuyến lai bằng Từ khóa (Keyword Routing)</h5>
+                                        <p style="font-size: 0.82rem; color: var(--text-muted);">Bỏ qua cuộc gọi LLM phân loại tốn kém khi truy vấn chứa các từ khóa đặc trưng (như tax, irs, compliance). Xử lý cục bộ mất 0ms.</p>
+                                        <span class="savings-tag">~5 giây tiết kiệm</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 12px; align-items: flex-start; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.03); padding: 12px; border-radius: 12px;">
+                                    <span style="font-size: 1.25rem;">🎯</span>
+                                    <div>
+                                        <h5 style="color: #fff; font-size: 0.95rem; font-family: 'Outfit'; margin-bottom: 2px;">Trích xuất Trực tiếp (Direct Specialist Retrieval)</h5>
+                                        <p style="font-size: 0.82rem; color: var(--text-muted);">Loại bỏ vòng lặp tư duy ReAct (2+ cuộc gọi LLM) trong các Specialist Sub-Agents. Chạy tool tìm kiếm trong code trước và gọi LLM duy nhất 1 lần.</p>
+                                        <span class="savings-tag">~4 giây tiết kiệm</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Section -->
+    <script>
+        // Set up local state
+        let playgroundMode = 'simulation'; // 'simulation' or 'live'
+        let currentTab = 'unoptimized'; // 'unoptimized' or 'optimized'
+        let isRunning = false;
+        
+        let lastTimingUnopt = null;
+        let lastTimingOpt = null;
+
+        // Simulated Data Profiles
+        const simulatedData = {
+            q1: { // Vi phạm hợp đồng + Thuế
+                unoptimized: {
+                    total_latency: 26.54,
+                    needs_tax: true,
+                    needs_compliance: true,
+                    node_timings: {
+                        analyze_law: 5.82,
+                        check_routing: 4.96,
+                        call_tax_specialist: 9.24,
+                        call_compliance_specialist: 8.78,
+                        aggregate: 6.52
+                    },
+                    logs: `======================================================================
+STAGE 4: Multi-Agent System (In-Process)
+======================================================================
+Question: If a company breaks a contract and avoids taxes, what are the legal and regulatory consequences?
+----------------------------------------------------------------------
+  [Node: analyze_law] Lead attorney analysing legal aspects...
+  [Node: analyze_law] Done in 5.82s (948 chars)
+
+  [Node: check_routing] Determining which specialists are needed...
+  [Node: check_routing] LLM completed check. needs_tax=True, needs_compliance=True in 4.96s
+
+  [Node: call_tax_specialist] Tax specialist agent starting (ReAct mode)...
+  [Node: call_compliance_specialist] Compliance specialist agent starting (ReAct mode)...
+  [Node: call_compliance_specialist] Call Tool: search_compliance_law("avoids taxes...") returned 210 chars
+  [Node: call_tax_specialist] Call Tool: search_tax_law("breaks contract...") returned 735 chars
+  [Node: call_compliance_specialist] Done in 8.78s (210 chars)
+  [Node: call_tax_specialist] Done in 9.24s (735 chars)
+
+  [Node: aggregate] Combining all specialist analyses...
+  [Node: aggregate] Done in 6.52s (2646 chars)
+======================================================================`,
+                    final_answer: `<h2>I. Phân tích Pháp lý Tổng quát (Contract & Business Law)</h2><p>Hành vi vi phạm hợp đồng (breach of contract) làm phát sinh trách nhiệm dân sự của công ty đối với bên bị vi phạm. Theo Bộ luật Dân sự và Luật Thương mại, công ty có thể đối mặt với các chế tài:</p><ul><li><strong>Bồi thường thiệt hại:</strong> Bù đắp tổn thất tài chính thực tế cho bên đối tác.</li><li><strong>Phạt vi phạm:</strong> Nếu hợp đồng có thỏa thuận phạt (tối đa 8% đối với hợp đồng thương mại).</li><li><strong>Buộc thực hiện đúng hợp đồng:</strong> Tòa án yêu cầu công ty tiếp tục thực hiện nghĩa vụ đã ký kết.</li></ul><h2>II. Phân tích Khía cạnh Thuế (Tax Law & Evasion)</h2><p>Hành vi "trốn thuế" (tax evasion) không còn là quan hệ dân sự mà vi phạm pháp luật hình sự nghiêm trọng:</p><ul><li><strong>Hình phạt Hình sự:</strong> Theo Luật Thuế Hoa Kỳ (26 U.S.C. § 7201), cá nhân/pháp nhân trốn thuế đối mặt phạt tiền lên tới $250,000 và phạt tù lên tới 5 năm.</li><li><strong>Chế tài Hành chính Dân sự:</strong> Phạt tiền từ 75% số tiền trốn thuế chậm nộp (IRC § 6663) cộng thêm tiền lãi suất chậm nộp hàng ngày.</li></ul><h2>III. Phân tích Khía cạnh Tuân thủ (Regulatory Compliance)</h2><p>Công ty niêm yết vi phạm cả hợp đồng lẫn nghĩa vụ thuế sẽ kích hoạt các chế tài tuân thủ nghiêm ngặt:</p><ul><li><strong>Sarbanes-Oxley (SOX § 906):</strong> Ban giám đốc ký báo cáo tài chính sai lệch (che giấu nợ thuế hoặc bồi thường hợp đồng) đối mặt phạt tù lên đến 20 năm và phạt tiền tới $5M.</li><li><strong>Cấm đảm nhiệm chức vụ:</strong> SEC có quyền cấm vĩnh viễn các giám đốc vi phạm tham gia quản trị các công ty đại chúng.</li></ul>`
+                },
+                optimized: {
+                    total_latency: 16.32,
+                    needs_tax: true,
+                    needs_compliance: true,
+                    node_timings: {
+                        analyze_law: 5.62,
+                        check_routing: 0.002,
+                        call_tax_specialist: 4.88,
+                        call_compliance_specialist: 4.64,
+                        aggregate: 5.82
+                    },
+                    logs: `======================================================================
+STAGE 4: Multi-Agent System (OPTIMIZED & INSTRUMENTED)
+======================================================================
+Question: If a company breaks a contract and avoids taxes, what are the legal and regulatory consequences?
+----------------------------------------------------------------------
+  [Node OPT: check_routing] Determining which specialists are needed...
+  [Node OPT: check_routing] (Fast-Path Keyword Match) needs_tax=True, needs_compliance=True in 2.15ms
+  [Node OPT: analyze_law] Lead attorney analysing legal aspects...
+  
+  [Node OPT: call_tax_specialist] Tax specialist starting (direct mode)...
+  [Node OPT: call_compliance_specialist] Compliance specialist starting (direct mode)...
+  
+  [Node OPT: call_compliance_specialist] Done in 4.64s (210 chars)
+  [Node OPT: call_tax_specialist] Done in 4.88s (735 chars)
+  [Node OPT: analyze_law] Done in 5.62s (948 chars)
+
+  [Node OPT: aggregate] Combining all specialist analyses...
+  [Node OPT: aggregate] Done in 5.82s (2646 chars)
+======================================================================`,
+                    final_answer: `<h2>I. Phân tích Pháp lý Tổng quát (Contract & Business Law)</h2><p>Hành vi vi phạm hợp đồng (breach of contract) làm phát sinh trách nhiệm dân sự của công ty đối với bên bị vi phạm. Theo Bộ luật Dân sự và Luật Thương mại, công ty có thể đối mặt với các chế tài:</p><ul><li><strong>Bồi thường thiệt hại:</strong> Bù đắp tổn thất tài chính thực tế cho bên đối tác.</li><li><strong>Phạt vi phạm:</strong> Nếu hợp đồng có thỏa thuận phạt (tối đa 8% đối với hợp đồng thương mại).</li><li><strong>Buộc thực hiện đúng hợp đồng:</strong> Tòa án yêu cầu công ty tiếp tục thực hiện nghĩa vụ đã ký kết.</li></ul><h2>II. Phân tích Khía cạnh Thuế (Tax Law & Evasion)</h2><p>Hành vi "trốn thuế" (tax evasion) không còn là quan hệ dân sự mà vi phạm pháp luật hình sự nghiêm trọng:</p><ul><li><strong>Hình phạt Hình sự:</strong> Theo Luật Thuế Hoa Kỳ (26 U.S.C. § 7201), cá nhân/pháp nhân trốn thuế đối mặt phạt tiền lên tới $250,000 và phạt tù lên tới 5 năm.</li><li><strong>Chế tài Hành chính Dân sự:</strong> Phạt tiền từ 75% số tiền trốn thuế chậm nộp (IRC § 6663) cộng thêm tiền lãi suất chậm nộp hàng ngày.</li></ul><h2>III. Phân tích Khía cạnh Tuân thủ (Regulatory Compliance)</h2><p>Công ty niêm yết vi phạm cả hợp đồng lẫn nghĩa vụ thuế sẽ kích hoạt các chế tài tuân thủ nghiêm ngặt:</p><ul><li><strong>Sarbanes-Oxley (SOX § 906):</strong> Ban giám đốc ký báo cáo tài chính sai lệch (che giấu nợ thuế hoặc bồi thường hợp đồng) đối mặt phạt tù lên đến 20 năm và phạt tiền tới $5M.</li><li><strong>Cấm đảm nhiệm chức vụ:</strong> SEC có quyền cấm vĩnh viễn các giám đốc vi phạm tham gia quản trị các công ty đại chúng.</li></ul>`
+                }
+            },
+            q2: { // Tranh chấp hợp đồng
+                unoptimized: {
+                    total_latency: 17.54,
+                    needs_tax: false,
+                    needs_compliance: false,
+                    node_timings: {
+                        analyze_law: 5.76,
+                        check_routing: 4.88,
+                        aggregate: 6.90
+                    },
+                    logs: `======================================================================
+STAGE 4: Multi-Agent System (In-Process)
+======================================================================
+Question: What is the statute of limitations for a simple contract breach?
+----------------------------------------------------------------------
+  [Node: analyze_law] Lead attorney analysing legal aspects...
+  [Node: analyze_law] Done in 5.76s (780 chars)
+
+  [Node: check_routing] Determining which specialists are needed...
+  [Node: check_routing] LLM completed check. needs_tax=False, needs_compliance=False in 4.88s
+
+  [Node: check_routing] No specialists needed. Routing straight to aggregate.
+
+  [Node: aggregate] Combining all specialist analyses...
+  [Node: aggregate] Done in 6.90s (1520 chars)
+======================================================================`,
+                    final_answer: `<h2>Phân tích Pháp lý: Thời hiệu khởi kiện vi phạm hợp đồng đơn thuần</h2><p>Đối với một tranh chấp vi phạm hợp đồng đơn thuần (simple breach of contract) mà không đi kèm các yếu tố liên quan đến nghĩa vụ thuế hay quản lý nhà nước khác, thời hiệu và chế tài sẽ được xử lý như sau:</p><ul><li><strong>Thời hiệu khởi kiện (Statute of Limitations):</strong> Theo pháp luật đa số các bang (Mỹ) hoặc theo quy định chung, thời hiệu cho hợp đồng viết thường kéo dài từ 3 đến 6 năm, trong khi hợp đồng miệng thường ngắn hơn (từ 2 đến 4 năm) tính từ ngày xảy ra hành vi vi phạm.</li><li><strong>Chế tài áp dụng:</strong> Chủ yếu là các chế tài dân sự thuần túy bao gồm bồi thường thiệt hại thực tế (compensatory damages), hoàn trả lợi ích bất hợp pháp (restitution) hoặc yêu cầu tiếp tục thực hiện hợp đồng.</li><li><strong>Yêu cầu bổ sung:</strong> Do Router xác định vụ việc không chứa các dấu hiệu trốn thuế hoặc gian lận báo cáo tài chính của công ty đại chúng, do đó hệ thống không cần triệu tập phân tích chuyên sâu từ các chuyên gia Thuế (Tax) và Tuân thủ (Compliance).</li></ul>`
+                },
+                optimized: {
+                    total_latency: 12.35,
+                    needs_tax: false,
+                    needs_compliance: false,
+                    node_timings: {
+                        analyze_law: 5.55,
+                        check_routing: 0.001,
+                        aggregate: 6.80
+                    },
+                    logs: `======================================================================
+STAGE 4: Multi-Agent System (OPTIMIZED & INSTRUMENTED)
+======================================================================
+Question: What is the statute of limitations for a simple contract breach?
+----------------------------------------------------------------------
+  [Node OPT: check_routing] Determining which specialists are needed...
+  [Node OPT: check_routing] (Fast-Path Keyword Match) No keywords matched. Bypassed LLM loop = False/False in 0.85ms
+  [Node OPT: analyze_law] Lead attorney analysing legal aspects...
+  
+  [Node OPT: check_routing] Bypassed specialists. Directing to aggregate.
+  [Node OPT: analyze_law] Done in 5.55s (780 chars)
+
+  [Node OPT: aggregate] Combining all specialist analyses...
+  [Node OPT: aggregate] Done in 6.80s (1520 chars)
+======================================================================`,
+                    final_answer: `<h2>Phân tích Pháp lý: Thời hiệu khởi kiện vi phạm hợp đồng đơn thuần</h2><p>Đối với một tranh chấp vi phạm hợp đồng đơn thuần (simple breach of contract) mà không đi kèm các yếu tố liên quan đến nghĩa vụ thuế hay quản lý nhà nước khác, thời hiệu và chế tài sẽ được xử lý như sau:</p><ul><li><strong>Thời hiệu khởi kiện (Statute of Limitations):</strong> Theo pháp luật đa số các bang (Mỹ) hoặc theo quy định chung, thời hiệu cho hợp đồng viết thường kéo dài từ 3 đến 6 năm, trong khi hợp đồng miệng thường ngắn hơn (từ 2 đến 4 năm) tính từ ngày xảy ra hành vi vi phạm.</li><li><strong>Chế tài áp dụng:</strong> Chủ yếu là các chế tài dân sự thuần túy bao gồm bồi thường thiệt hại thực tế (compensatory damages), hoàn trả lợi ích bất hợp pháp (restitution) hoặc yêu cầu tiếp tục thực hiện hợp đồng.</li><li><strong>Yêu cầu bổ sung:</strong> Do Router xác định vụ việc không chứa các dấu hiệu trốn thuế hoặc gian lận báo cáo tài chính của công ty đại chúng, do đó hệ thống không cần triệu tập phân tích chuyên sâu từ các chuyên gia Thuế (Tax) và Tuân thủ (Compliance).</li></ul>`
+                }
+            }
+        };
+
+        // Initialize Backend Status Check on load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await checkBackendStatus();
+            onSelectQuestion();
+        });
+
+        // Get the base API URL dynamically
+        const getApiUrl = () => {
+            const origin = window.location.origin;
+            if (origin && origin.startsWith('http')) {
+                return origin;
+            }
+            return 'http://127.0.0.1:8080';
+        };
+
+        async function checkBackendStatus() {
+            const statusBadge = document.getElementById('backend-status');
+            try {
+                const res = await fetch(getApiUrl() + '/api/health?t=' + Date.now());
+                // Backend is online
+                statusBadge.style.background = 'rgba(16, 185, 129, 0.08)';
+                statusBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                statusBadge.style.color = 'var(--primary)';
+                statusBadge.querySelector('.dot').style.backgroundColor = 'var(--primary)';
+                statusBadge.querySelector('.dot').style.animation = 'pulse-dot 1.5s infinite';
+                statusBadge.querySelector('span').innerText = 'Backend Online (Port 8080)';
+                
+                // If backend is online, recommend Live Mode
+                setPlaygroundMode('live');
+            } catch (err) {
+                // Backend is offline
+                statusBadge.style.background = 'rgba(239, 68, 68, 0.08)';
+                statusBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                statusBadge.style.color = 'var(--danger)';
+                statusBadge.querySelector('.dot').style.backgroundColor = 'var(--danger)';
+                statusBadge.querySelector('.dot').style.animation = 'none';
+                statusBadge.querySelector('span').innerText = 'Backend Offline';
+                
+                setPlaygroundMode('simulation');
+            }
+        }
+
+        function setPlaygroundMode(mode) {
+            playgroundMode = mode;
+            document.getElementById('mode-sim').classList.toggle('active', mode === 'simulation');
+            document.getElementById('mode-live').classList.toggle('active', mode === 'live');
+            
+            // Adjust label of execution button
+            const simText = mode === 'simulation' ? ' (Mô phỏng)' : ' (Live API)';
+            document.getElementById('btn-run-unopt').innerText = 'Chạy Unopt' + simText;
+            document.getElementById('btn-run-opt').innerText = 'Chạy Opt' + simText;
+        }
+
+        function switchVisualTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-unopt').classList.toggle('active', tab === 'unoptimized');
+            document.getElementById('tab-opt').classList.toggle('active', tab === 'optimized');
+            
+            document.getElementById('graph-unoptimized').style.display = tab === 'unoptimized' ? 'flex' : 'none';
+            document.getElementById('graph-optimized').style.display = tab === 'optimized' ? 'flex' : 'none';
+        }
+
+        function onSelectQuestion() {
+            const select = document.getElementById('question-select');
+            const textarea = document.getElementById('question-text');
+            
+            if (select.value === 'q1') {
+                textarea.value = "If a company breaks a contract and avoids taxes, what are the legal and regulatory consequences?";
+                textarea.disabled = true;
+            } else if (select.value === 'q2') {
+                textarea.value = "What is the statute of limitations for a simple contract breach?";
+                textarea.disabled = true;
+            } else {
+                textarea.value = "";
+                textarea.disabled = false;
+                textarea.placeholder = "Nhập câu hỏi tự do của bạn vào đây...";
+                textarea.focus();
+            }
+        }
+
+        function clearResponse() {
+            document.getElementById('response-output').innerHTML = `
+                <p style="color: var(--text-muted); font-style: italic;">Phản hồi từ Hệ thống Multi-Agent sẽ hiển thị ở đây sau khi hoàn tất xử lý...</p>
+            `;
+        }
+
+        function writeToConsole(text, append = false) {
+            const consoleBox = document.getElementById('console-output');
+            if (append) {
+                consoleBox.innerText += "\n" + text;
+            } else {
+                consoleBox.innerText = text;
+            }
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        // Trigger simulation or live run
+        async function startExecution(mode) {
+            if (isRunning) return;
+            isRunning = true;
+            
+            // Auto switch visual tab to match execution mode
+            switchVisualTab(mode);
+            clearResponse();
+            
+            const questionText = document.getElementById('question-text').value;
+            if (!questionText.trim()) {
+                alert("Vui lòng nhập câu hỏi trước khi chạy!");
+                isRunning = false;
+                return;
+            }
+
+            // Disable buttons during run
+            document.getElementById('btn-run-unopt').disabled = true;
+            document.getElementById('btn-run-opt').disabled = true;
+            document.getElementById('log-status').innerText = 'Đang xử lý...';
+
+            if (playgroundMode === 'simulation') {
+                await runSimulation(mode);
+            } else {
+                await runLiveAPI(mode, questionText);
+            }
+            
+            // Re-enable buttons
+            document.getElementById('btn-run-unopt').disabled = false;
+            document.getElementById('btn-run-opt').disabled = false;
+            document.getElementById('log-status').innerText = 'Hoàn tất.';
+            isRunning = false;
+        }
+
+        // --- SIMULATION MODE LOGIC ---
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function runSimulation(mode) {
+            const questionKey = document.getElementById('question-select').value;
+            // Fallback key if user selected custom but we are in simulation
+            const dataKey = (questionKey === 'custom' || !simulatedData[questionKey]) ? 'q1' : questionKey;
+            const profile = simulatedData[dataKey][mode];
+
+            writeToConsole(`[MÔ PHỎNG] Bắt đầu khởi chạy hệ thống ở chế độ: ${mode.toUpperCase()}...`);
+            await sleep(800);
+
+            // Get SVG elements
+            const prefix = mode === 'unoptimized' ? 'unopt' : 'opt';
+            resetGraphColors(prefix);
+
+            // Step 1: START
+            highlightNode(prefix, 'START', 'completed');
+            writeToConsole(`[START] Hệ thống khởi chạy. Nạp câu hỏi...`, true);
+            await sleep(500);
+
+            if (mode === 'unoptimized') {
+                // SEQUENTIAL FLOW: START -> analyze_law -> check_routing -> specialists -> aggregate
+                
+                // Edge START -> analyze_law
+                highlightEdge(prefix, 'start-law', 'active');
+                await sleep(500);
+                highlightEdge(prefix, 'start-law', 'completed');
+
+                // analyze_law
+                highlightNode(prefix, 'analyze_law', 'running');
+                writeToConsole(`[Node: analyze_law] Luật sư chính đang phân tích các khía cạnh pháp lý chung...`, true);
+                await sleep(profile.node_timings.analyze_law * 300); // speed up simulation slightly
+                highlightNode(prefix, 'analyze_law', 'completed');
+                writeToConsole(`[Node: analyze_law] Hoàn thành phân tích pháp lý chung trong ${profile.node_timings.analyze_law}s.`, true);
+                await sleep(500);
+
+                // Edge analyze_law -> check_routing
+                highlightEdge(prefix, 'law-route', 'active');
+                await sleep(500);
+                highlightEdge(prefix, 'law-route', 'completed');
+
+                // check_routing
+                highlightNode(prefix, 'check_routing', 'running');
+                writeToConsole(`[Node: check_routing] Đang xác định các chuyên gia cần thiết qua LLM...`, true);
+                await sleep(profile.node_timings.check_routing * 300);
+                highlightNode(prefix, 'check_routing', 'completed');
+                writeToConsole(`[Node: check_routing] LLM phân tích xong. Cần các chuyên gia: Thuế = ${profile.needs_tax}, Tuân thủ = ${profile.needs_compliance} (Mất ${profile.node_timings.check_routing}s).`, true);
+                await sleep(500);
+
+                if (profile.needs_tax || profile.needs_compliance) {
+                    // Route to specialists
+                    if (profile.needs_tax) {
+                        highlightEdge(prefix, 'route-tax', 'active');
+                        highlightNode(prefix, 'call_tax_specialist', 'running');
+                    }
+                    if (profile.needs_compliance) {
+                        highlightEdge(prefix, 'route-comp', 'active');
+                        highlightNode(prefix, 'call_compliance_specialist', 'running');
+                    }
+                    writeToConsole(`[Specialists] Triệu tập các Sub-Agents phân tích chuyên môn (ReAct agent)...`, true);
+                    
+                    // Wait max of sub-agents
+                    const maxSpecialistTime = Math.max(
+                        profile.node_timings.call_tax_specialist || 0,
+                        profile.node_timings.call_compliance_specialist || 0
+                    );
+                    await sleep(maxSpecialistTime * 300);
+
+                    if (profile.needs_tax) {
+                        highlightNode(prefix, 'call_tax_specialist', 'completed');
+                        highlightEdge(prefix, 'route-tax', 'completed');
+                        highlightEdge(prefix, 'tax-agg', 'completed');
+                        writeToConsole(`[Node: tax_specialist] Hoàn thành phân tích thuế (ReAct) trong ${profile.node_timings.call_tax_specialist}s.`, true);
+                    }
+                    if (profile.needs_compliance) {
+                        highlightNode(prefix, 'call_compliance_specialist', 'completed');
+                        highlightEdge(prefix, 'route-comp', 'completed');
+                        highlightEdge(prefix, 'comp-agg', 'completed');
+                        writeToConsole(`[Node: compliance_specialist] Hoàn thành phân tích tuân thủ (ReAct) trong ${profile.node_timings.call_compliance_specialist}s.`, true);
+                    }
+                } else {
+                    writeToConsole(`[Specialists] Bỏ qua các Specialist Agents. Định tuyến thẳng tới Aggregator.`, true);
+                }
+                await sleep(500);
+
+                // aggregate
+                highlightNode(prefix, 'aggregate', 'running');
+                writeToConsole(`[Node: aggregate] Tiến hành tổng hợp các báo cáo chuyên môn...`, true);
+                await sleep(profile.node_timings.aggregate * 300);
+                highlightNode(prefix, 'aggregate', 'completed');
+                highlightEdge(prefix, 'agg-end', 'completed');
+                highlightNode(prefix, 'END', 'completed');
+                writeToConsole(`[Node: aggregate] Hoàn thành tổng hợp trong ${profile.node_timings.aggregate}s.`, true);
+
+            } else {
+                // OPTIMIZED FLOW: START -> analyze_law & check_routing in parallel
+                // Start parallel paths
+                highlightEdge(prefix, 'start-law', 'active');
+                highlightEdge(prefix, 'start-route', 'active');
+                highlightNode(prefix, 'analyze_law', 'running');
+                highlightNode(prefix, 'check_routing', 'running');
+                writeToConsole(`[OPTIMIZED] Khởi chạy song song: [analyze_law] và [check_routing]...`, true);
+                await sleep(800);
+
+                // check_routing runs instantly (0.002s) due to keyword-routing
+                highlightNode(prefix, 'check_routing', 'completed');
+                highlightEdge(prefix, 'start-route', 'completed');
+                writeToConsole(`[Node OPT: check_routing] Định tuyến nhanh bằng từ khóa thành công (0ms). Cần Thuế = ${profile.needs_tax}, Tuân thủ = ${profile.needs_compliance}. Bỏ qua cuộc gọi LLM routing.`, true);
+                await sleep(500);
+
+                // Route to subagents instantly
+                if (profile.needs_tax || profile.needs_compliance) {
+                    if (profile.needs_tax) {
+                        highlightEdge(prefix, 'route-tax', 'active');
+                        highlightNode(prefix, 'call_tax_specialist', 'running');
+                    }
+                    if (profile.needs_compliance) {
+                        highlightEdge(prefix, 'route-comp', 'active');
+                        highlightNode(prefix, 'call_compliance_specialist', 'running');
+                    }
+                    writeToConsole(`[OPTIMIZED Specialists] Khởi chạy trực tiếp các Specialist Agents (bỏ qua ReAct loop, dùng 1-LLM direct query)...`, true);
+                    
+                    // Wait for specialists
+                    const maxSpecialistTime = Math.max(
+                        profile.node_timings.call_tax_specialist || 0,
+                        profile.node_timings.call_compliance_specialist || 0
+                    );
+                    await sleep(maxSpecialistTime * 300);
+
+                    if (profile.needs_tax) {
+                        highlightNode(prefix, 'call_tax_specialist', 'completed');
+                        highlightEdge(prefix, 'route-tax', 'completed');
+                        highlightEdge(prefix, 'tax-agg', 'completed');
+                        writeToConsole(`[Node OPT: tax_specialist] Hoàn thành trong ${profile.node_timings.call_tax_specialist}s (giảm 50% nhờ bỏ ReAct).`, true);
+                    }
+                    if (profile.needs_compliance) {
+                        highlightNode(prefix, 'call_compliance_specialist', 'completed');
+                        highlightEdge(prefix, 'route-comp', 'completed');
+                        highlightEdge(prefix, 'comp-agg', 'completed');
+                        writeToConsole(`[Node OPT: compliance_specialist] Hoàn thành trong ${profile.node_timings.call_compliance_specialist}s (giảm 50% nhờ bỏ ReAct).`, true);
+                    }
+                } else {
+                    highlightNode(prefix, 'call_tax_specialist', 'bypassed');
+                    highlightNode(prefix, 'call_compliance_specialist', 'bypassed');
+                    writeToConsole(`[OPTIMIZED Specialists] Không cần phân tích chuyên môn. Bỏ qua chuyên gia.`, true);
+                }
+
+                // Wait for analyze_law to complete (it runs in parallel and takes 5.62s)
+                await sleep(1500);
+                highlightNode(prefix, 'analyze_law', 'completed');
+                highlightEdge(prefix, 'start-law', 'completed');
+                highlightEdge(prefix, 'law-agg', 'completed');
+                writeToConsole(`[Node OPT: analyze_law] Hoàn thành phân tích pháp lý chung trong ${profile.node_timings.analyze_law}s.`, true);
+                await sleep(500);
+
+                // Both paths join at aggregate
+                highlightNode(prefix, 'aggregate', 'running');
+                writeToConsole(`[Node OPT: aggregate] Tiến hành tổng hợp kết quả chung...`, true);
+                await sleep(profile.node_timings.aggregate * 300);
+                highlightNode(prefix, 'aggregate', 'completed');
+                highlightEdge(prefix, 'agg-end', 'completed');
+                highlightNode(prefix, 'END', 'completed');
+                writeToConsole(`[Node OPT: aggregate] Hoàn tất báo cáo tổng hợp trong ${profile.node_timings.aggregate}s.`, true);
+            }
+
+            // Complete simulation run
+            writeToConsole(`[HOÀN TẤT] Tổng độ trễ hệ thống (Simulated): ${profile.total_latency.toFixed(2)}s`, true);
+            
+            // Set values in UI
+            if (mode === 'unoptimized') {
+                lastTimingUnopt = profile.total_latency;
+                document.getElementById('timing-unopt-val').innerText = `${lastTimingUnopt.toFixed(2)} giây`;
+            } else {
+                lastTimingOpt = profile.total_latency;
+                document.getElementById('timing-opt-val').innerText = `${lastTimingOpt.toFixed(2)} giây`;
+            }
+
+            // Update bar chart
+            updatePerformanceBars();
+
+            // Populate output text
+            document.getElementById('response-output').innerHTML = profile.final_answer;
+        }
+
+        // --- LIVE API MODE LOGIC ---
+        async function runLiveAPI(mode, question) {
+            writeToConsole(`[API THỰC TẾ] Đang gửi yêu cầu xử lý lên backend server (Chế độ: ${mode.toUpperCase()})...`);
+            writeToConsole(`Vui lòng chờ (cuộc gọi API có thể mất 15-30 giây tùy thuộc vào phản hồi từ mô hình LLM)...`, true);
+            
+            const prefix = mode === 'unoptimized' ? 'unopt' : 'opt';
+            resetGraphColors(prefix);
+            highlightNode(prefix, 'START', 'completed');
+
+            // Simple loading animation on active graph nodes
+            let nodeInterval = setInterval(() => {
+                if (mode === 'unoptimized') {
+                    // Loop active visual states for fun while loading
+                    animateLoadingNodes(prefix, ['analyze_law', 'check_routing', 'call_tax_specialist', 'call_compliance_specialist', 'aggregate']);
+                } else {
+                    animateLoadingNodes(prefix, ['analyze_law', 'check_routing', 'call_tax_specialist', 'call_compliance_specialist', 'aggregate']);
+                }
+            }, 1000);
+
+            try {
+                const response = await fetch(getApiUrl() + '/api/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question, mode }),
+                });
+
+                clearInterval(nodeInterval);
+                resetGraphColors(prefix);
+                highlightNode(prefix, 'START', 'completed');
+
+                if (!response.ok) {
+                    throw new Error(`Server trả về mã lỗi: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.status === 'error') {
+                    writeToConsole(`[LỖI HỆ THỐNG]\n${data.error}\n\nLogs chi tiết:\n${data.logs}`);
+                    document.getElementById('response-output').innerHTML = `
+                        <div style="color: var(--danger); font-weight: 600;">Lỗi xử lý API:</div>
+                        <pre style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); padding: 12px; border-radius: 8px; font-family: monospace; color: #fecaca; margin-top: 8px; font-size: 0.85rem; overflow-x: auto;">${data.error}</pre>
+                    `;
+                    return;
+                }
+
+                // SUCCESS PATH
+                writeToConsole(data.logs);
+                writeToConsole(`\n[HOÀN TẤT] Tổng độ trễ thực tế đo được: ${data.total_latency.toFixed(2)}s`, true);
+
+                // Highlight all completed nodes in graph
+                highlightNode(prefix, 'analyze_law', 'completed');
+                highlightEdge(prefix, 'start-law', 'completed');
+                
+                if (mode === 'unoptimized') {
+                    highlightNode(prefix, 'check_routing', 'completed');
+                    highlightEdge(prefix, 'law-route', 'completed');
+                    
+                    if (data.needs_tax) {
+                        highlightNode(prefix, 'call_tax_specialist', 'completed');
+                        highlightEdge(prefix, 'route-tax', 'completed');
+                        highlightEdge(prefix, 'tax-agg', 'completed');
+                    } else {
+                        highlightNode(prefix, 'call_tax_specialist', 'bypassed');
+                    }
+
+                    if (data.needs_compliance) {
+                        highlightNode(prefix, 'call_compliance_specialist', 'completed');
+                        highlightEdge(prefix, 'route-comp', 'completed');
+                        highlightEdge(prefix, 'comp-agg', 'completed');
+                    } else {
+                        highlightNode(prefix, 'call_compliance_specialist', 'bypassed');
+                    }
+                } else {
+                    // Optimized
+                    highlightNode(prefix, 'check_routing', 'completed');
+                    highlightEdge(prefix, 'start-route', 'completed');
+                    highlightEdge(prefix, 'law-agg', 'completed');
+
+                    // If check_routing took less than 0.1s, it was keyword routed
+                    const routingTime = data.node_timings.check_routing || 0;
+                    if (routingTime < 0.1) {
+                        writeToConsole(`[TỐI ƯU HÓA] Bảng định tuyến từ khóa đã xử lý nhanh trong ${routingTime * 1000:.2f}ms (Bỏ qua LLM call).`, true);
+                    }
+
+                    if (data.needs_tax) {
+                        highlightNode(prefix, 'call_tax_specialist', 'completed');
+                        highlightEdge(prefix, 'route-tax', 'completed');
+                        highlightEdge(prefix, 'tax-agg', 'completed');
+                    } else {
+                        highlightNode(prefix, 'call_tax_specialist', 'bypassed');
+                    }
+
+                    if (data.needs_compliance) {
+                        highlightNode(prefix, 'call_compliance_specialist', 'completed');
+                        highlightEdge(prefix, 'route-comp', 'completed');
+                        highlightEdge(prefix, 'comp-agg', 'completed');
+                    } else {
+                        highlightNode(prefix, 'call_compliance_specialist', 'bypassed');
+                    }
+                }
+
+                highlightNode(prefix, 'aggregate', 'completed');
+                highlightEdge(prefix, 'agg-end', 'completed');
+                highlightNode(prefix, 'END', 'completed');
+
+                // Update Timings variables
+                if (mode === 'unoptimized') {
+                    lastTimingUnopt = data.total_latency;
+                    document.getElementById('timing-unopt-val').innerText = `${lastTimingUnopt.toFixed(2)} giây`;
+                } else {
+                    lastTimingOpt = data.total_latency;
+                    document.getElementById('timing-opt-val').innerText = `${lastTimingOpt.toFixed(2)} giây`;
+                }
+
+                updatePerformanceBars();
+
+                // Format response output markdown-like syntax to basic html
+                const formattedAnswer = formatMarkdownToHTML(data.final_answer);
+                document.getElementById('response-output').innerHTML = formattedAnswer;
+
+            } catch (err) {
+                clearInterval(nodeInterval);
+                writeToConsole(`[LỖI MẠNG] Không thể kết nối tới server: ${err.message}\nĐảm bảo bạn đã khởi chạy file uvicorn server (python latency_demo_server.py) trên cổng 8080.`);
+                alert("Không thể kết nối đến local backend. Hệ thống sẽ tự động hạ cấp xuống chế độ Mô phỏng.");
+                setPlaygroundMode('simulation');
+            }
+        }
+
+        // Helper to animate nodes while calling live API
+        let loadingNodeIndex = 0;
+        function animateLoadingNodes(prefix, nodeList) {
+            // Remove running states
+            nodeList.forEach(node => {
+                const el = document.getElementById(`${prefix}-node-${node}`);
+                if (el) el.classList.remove('running');
+            });
+            
+            // Set current node running
+            const activeNode = nodeList[loadingNodeIndex % nodeList.length];
+            const el = document.getElementById(`${prefix}-node-${activeNode}`);
+            if (el) el.classList.add('running');
+            
+            loadingNodeIndex++;
+        }
+
+        function resetGraphColors(prefix) {
+            const nodes = ['START', 'analyze_law', 'check_routing', 'call_tax_specialist', 'call_compliance_specialist', 'aggregate', 'END'];
+            nodes.forEach(node => {
+                const el = document.getElementById(`${prefix}-node-${node}`);
+                if (el) el.className.baseVal = 'node'; // reset classes
+            });
+
+            // Reset edges
+            const edges = [
+                'start-law', 'law-route', 'route-tax', 'route-comp', 'tax-agg', 'comp-agg', 'agg-end', // unopt
+                'start-route', 'law-agg' // opt additional
+            ];
+            edges.forEach(edge => {
+                const el = document.getElementById(`${prefix}-edge-${edge}`);
+                if (el) el.className.baseVal = 'edge-path';
+            });
+        }
+
+        function highlightNode(prefix, nodeName, status) {
+            const el = document.getElementById(`${prefix}-node-${nodeName}`);
+            if (el) {
+                el.className.baseVal = `node ${status}`;
+            }
+        }
+
+        function highlightEdge(prefix, edgeName, status) {
+            const el = document.getElementById(`${prefix}-edge-${edgeName}`);
+            if (el) {
+                el.className.baseVal = `edge-path ${status}`;
+            }
+        }
+
+        function updatePerformanceBars() {
+            const barUnopt = document.getElementById('bar-unopt');
+            const barOpt = document.getElementById('bar-opt');
+            
+            const labelUnopt = document.getElementById('bar-label-unopt');
+            const labelOpt = document.getElementById('bar-label-opt');
+            const labelSaved = document.getElementById('timing-saved-val');
+            
+            const badgeWrapper = document.getElementById('savings-badge-wrapper');
+            const savingsPercentage = document.getElementById('savings-percentage');
+
+            if (lastTimingUnopt) {
+                labelUnopt.innerText = `${lastTimingUnopt.toFixed(2)} s`;
+            }
+            if (lastTimingOpt) {
+                labelOpt.innerText = `${lastTimingOpt.toFixed(2)} s`;
+            }
+
+            // Calculate ratios
+            if (lastTimingUnopt && lastTimingOpt) {
+                const maxVal = Math.max(lastTimingUnopt, lastTimingOpt);
+                const unoptWidth = (lastTimingUnopt / maxVal) * 100;
+                const optWidth = (lastTimingOpt / maxVal) * 100;
+
+                barUnopt.style.width = `${unoptWidth}%`;
+                barUnopt.innerText = `${lastTimingUnopt.toFixed(2)}s (100%)`;
+                
+                barOpt.style.width = `${optWidth}%`;
+                const percent = (lastTimingOpt / lastTimingUnopt) * 100;
+                barOpt.innerText = `${lastTimingOpt.toFixed(2)}s (${percent.toFixed(0)}%)`;
+
+                // Calculate savings
+                const saved = lastTimingUnopt - lastTimingOpt;
+                const savedPercent = (saved / lastTimingUnopt) * 100;
+                labelSaved.innerText = `${saved.toFixed(2)} giây (${savedPercent.toFixed(1)}%)`;
+                
+                badgeWrapper.style.display = 'block';
+                savingsPercentage.innerText = `-${savedPercent.toFixed(0)}% Latency`;
+            } else if (lastTimingUnopt) {
+                barUnopt.style.width = '100%';
+                barUnopt.innerText = `${lastTimingUnopt.toFixed(2)}s`;
+                barOpt.style.width = '0%';
+                barOpt.innerText = '0.0s';
+            } else if (lastTimingOpt) {
+                barOpt.style.width = '100%';
+                barOpt.innerText = `${lastTimingOpt.toFixed(2)}s`;
+                barUnopt.style.width = '0%';
+                barUnopt.innerText = '0.0s';
+            }
+        }
+
+        // Extremely simple parser for markdown headers, lists and bold texts
+        function formatMarkdownToHTML(md) {
+            if (!md) return '';
+            let html = md;
+            
+            // Replace Headers
+            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+            
+            // Replace Bold
+            html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+            
+            // Replace lists (simple * or - conversion)
+            html = html.replace(/^\* (.*$)/gim, '<li>$1</li>');
+            html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
+            
+            // Wrap list items in ul
+            // This is a naive regex but works fine for clean outputs
+            html = html.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
+            // Clean up consecutive <ul> tags
+            html = html.replace(/<\/ul>\s*<ul>/gim, '');
+            
+            // Replace newlines with paragraphs
+            html = html.split('\n\n').map(p => {
+                if (p.trim().startsWith('<h') || p.trim().startsWith('<ul') || p.trim().startsWith('<li')) {
+                    return p;
+                }
+                return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+            }).join('');
+
+            return html;
+        }
+    </script>
+</body>
+</html>

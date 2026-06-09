@@ -13,6 +13,7 @@ Cài đặt:
 
 import asyncio
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -24,59 +25,68 @@ def setup_directory():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# TODO: Điền danh sách URL bài báo cần crawl
+# Danh sách URL bài báo cần crawl
 ARTICLE_URLS = [
-    # Ví dụ:
-    # "https://vnexpress.net/...",
-    # "https://tuoitre.vn/...",
-    # "https://thanhnien.vn/...",
+    "https://vnexpress.net/dai-an-ma-tuy-voi-30-an-tu-hinh-5079661.html",
+    "https://vnexpress.net/ma-tuy-trong-loi-song-showbiz-5074606.html",
+    "https://vnexpress.net/hai-thanh-nien-duong-tinh-voi-ma-tuy-thong-chot-dam-nga-csgt-5082931.html",
+    "https://vnexpress.net/ma-tuy-tan-pha-tim-mach-the-nao-5077415.html",
+    "https://vnexpress.net/nhieu-nguoi-nuoc-ngoai-phe-ma-tuy-trong-khach-san-o-tp-hcm-5082175.html"
 ]
 
 
-async def crawl_article(url: str) -> dict:
+async def crawl_article(crawler, url: str) -> dict:
     """
-    Crawl một bài báo và trả về dict chứa metadata + content.
-
-    Returns:
-        {
-            "url": str,
-            "title": str,
-            "date_crawled": str (ISO format),
-            "content_markdown": str
+    Crawl một bài báo và trả về dict chứa metadata + content sử dụng crawl4ai.
+    """
+    try:
+        result = await crawler.arun(url=url)
+        r = result[0]
+        
+        # Trích xuất tiêu đề bằng regex từ html
+        title_match = re.search(r"<title>(.*?)</title>", r.html, re.IGNORECASE)
+        title = title_match.group(1).strip() if title_match else "Unknown Title"
+        
+        # Làm sạch tiêu đề khỏi hậu tố báo chí nếu có
+        title = re.sub(r"\s+-\s+Báo\s+VnExpress.*", "", title, flags=re.IGNORECASE)
+        title = re.sub(r"\s+-\s+VnExpress.*", "", title, flags=re.IGNORECASE)
+        
+        return {
+            "url": url,
+            "title": title,
+            "date_crawled": datetime.now().isoformat(),
+            "content_markdown": r.markdown,
         }
-    """
-    from crawl4ai import AsyncWebCrawler
-
-    # TODO: Implement crawling logic
-    # async with AsyncWebCrawler() as crawler:
-    #     result = await crawler.arun(url=url)
-    #     return {
-    #         "url": url,
-    #         "title": result.metadata.get("title", "Unknown"),
-    #         "date_crawled": datetime.now().isoformat(),
-    #         "content_markdown": result.markdown,
-    #     }
-    raise NotImplementedError("Implement crawl_article")
+    except Exception as e:
+        print(f"Error crawling {url}: {e}")
+        return {
+            "url": url,
+            "title": "Error Title",
+            "date_crawled": datetime.now().isoformat(),
+            "content_markdown": f"Error loading content: {e}",
+        }
 
 
 async def crawl_all():
-    """Crawl toàn bộ bài báo trong ARTICLE_URLS."""
+    """Crawl toàn bộ bài báo trong ARTICLE_URLS sử dụng crawl4ai."""
     setup_directory()
+    from crawl4ai import AsyncWebCrawler
 
-    for i, url in enumerate(ARTICLE_URLS, 1):
-        print(f"[{i}/{len(ARTICLE_URLS)}] Crawling: {url}")
-        article = await crawl_article(url)
+    async with AsyncWebCrawler() as crawler:
+        for i, url in enumerate(ARTICLE_URLS, 1):
+            print(f"[{i}/{len(ARTICLE_URLS)}] Crawling: {url}")
+            article = await crawl_article(crawler, url)
 
-        # Lưu file JSON
-        filename = f"article_{i:02d}.json"
-        filepath = DATA_DIR / filename
-        filepath.write_text(json.dumps(article, ensure_ascii=False, indent=2))
-        print(f"  ✓ Saved: {filepath}")
+            # Lưu file JSON
+            filename = f"article_{i:02d}.json"
+            filepath = DATA_DIR / filename
+            filepath.write_text(json.dumps(article, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"  Saved: {filepath}")
 
 
 if __name__ == "__main__":
     if not ARTICLE_URLS:
-        print("⚠ Hãy điền ARTICLE_URLS trước khi chạy!")
-        print("Gợi ý: tìm bài báo trên VnExpress, Tuổi Trẻ, Thanh Niên, ...")
+        print("[WARN] Hay dien ARTICLE_URLS truoc khi chay!")
     else:
         asyncio.run(crawl_all())
+

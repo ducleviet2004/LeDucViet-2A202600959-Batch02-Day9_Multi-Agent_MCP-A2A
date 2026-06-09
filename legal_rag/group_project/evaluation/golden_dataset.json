@@ -1,17 +1,77 @@
 [
   {
     "question": "Hình phạt cho tội tàng trữ trái phép chất ma tuý theo Điều 249 Bộ luật Hình sự?",
-    "expected_answer": "Phạt tù từ 1 đến 5 năm đối với trường hợp tàng trữ từ 1g đến dưới 5g heroin hoặc cocaine, hoặc chất ma tuý khác với khối lượng tương đương.",
+    "expected_answer": "Phạt tù từ 1 đến 5 năm đối với trường hợp tàng trữ từ 0,1 gam đến dưới 5 gam heroin, cocaine, methamphetamine, MDMA.",
     "expected_context": "Bộ luật Hình sự 2015, Điều 249"
   },
   {
     "question": "Luật Phòng chống ma tuý 2021 quy định những hình thức cai nghiện nào?",
-    "expected_answer": "Cai nghiện tự nguyện tại gia đình, cai nghiện tự nguyện tại cộng đồng, cai nghiện tự nguyện tại cơ sở cai nghiện, và cai nghiện bắt buộc tại cơ sở cai nghiện.",
+    "expected_answer": "Cai nghiện tự nguyện (tại gia đình, cộng đồng hoặc cơ sở cai nghiện) và cai nghiện bắt buộc tại cơ sở cai nghiện.",
     "expected_context": "Luật Phòng chống ma tuý 2021, Chương V"
   },
   {
     "question": "Danh mục các chất ma tuý thuộc nhóm I theo quy định pháp luật Việt Nam gồm những chất nào?",
-    "expected_answer": "Nhóm I gồm các chất ma tuý tuyệt đối cấm sử dụng trong y học và đời sống, bao gồm heroin, cocaine, methamphetamine, MDMA (ecstasy), cannabis (cần sa), và các chất tương tự.",
-    "expected_context": "Nghị định 57/2022/NĐ-CP, Phụ lục I"
+    "expected_answer": "Nhóm I gồm các chất ma tuý tuyệt đối cấm sử dụng trong y học và đời sống xã hội như heroin, cocaine, methamphetamine, MDMA, cần sa.",
+    "expected_context": "Nghị định 57/2022/NĐ-CP, Danh mục I"
+  },
+  {
+    "question": "Chất ma túy tàn phá hệ tim mạch con người như thế nào?",
+    "expected_answer": "Ma túy nhóm kích thích tàn phá tim mạch bằng cách gây co mạch, tăng nhịp tim, tăng huyết áp mạnh, co thắt mạch vành dẫn đến thiếu máu cơ tim, suy tim cấp, đột quỵ, thậm chí tử vong.",
+    "expected_context": "Bài báo ma túy tàn phá tim mạch (article_04)"
+  },
+  {
+    "question": "Vụ đại án ma túy nào ở Việt Nam có tới 30 án tử hình bị tuyên?",
+    "expected_answer": "Đường dây mua bán vận chuyển ma túy từ Campuchia về TP HCM và đi nước ngoài tiêu thụ có tổng cộng 30 bị cáo bị tuyên án tử hình.",
+    "expected_context": "Bài báo đại án ma túy với 30 án tử hình (article_01)"
+  },
+  {
+    "question": "Thực trạng sử dụng ma túy trong giới nghệ sĩ, showbiz được phản ánh như thế nào?",
+    "expected_answer": "Một bộ phận nghệ sĩ có lối sống ăn chơi hưởng lạc lệch chuẩn, tổ chức sử dụng ma túy (thuốc lắc, ketamine, bóng cười) dẫn đến bị bắt giữ và hủy hoại sự nghiệp.",
+    "expected_context": "Bài báo ma túy trong lối sống showbiz (article_02)"
+  },
+  {
+    "question": "Vụ việc hai thanh niên dương tính với ma túy đâm ngã CSGT diễn ra như thế nào?",
+    "expected_answer": "Hai thanh niên dương tính với ma túy đi xe máy phóng nhanh vượt chốt kiểm soát giao thông và đâm thẳng vào một chiến sĩ CSGT khiến chiến sĩ này ngã xuống đường bị thương nặng.",
+    "expected_context": "Bài báo hai thanh niên thông chốt đâm ngã CSGT (article_03)"
+  },
+  {
+    "question": "Nhóm người nước ngoài phê ma túy bị bắt giữ tại khách sạn nào ở TP HCM?",
+    "expected_answer": "Công an kiểm tra một khách sạn lớn ở trung tâm quận 1, phát hiện nhiều người nước ngoài và người Việt Nam tụ tập phê ma túy.",
+    "expected_context": "Bài báo nhiều người nước ngoài phê ma túy trong khách sạn ở TP HCM (article_05)"
+  },
+  {
+    "question": "Theo Luật Phòng chống ma túy 2021, người từ đủ bao nhiêu tuổi trở lên sử dụng trái phép chất ma túy sẽ bị lập hồ sơ quản lý?",
+    "expected_answer": "Người từ đủ 18 tuổi trở lên có hành vi sử dụng trái phép chất ma túy sẽ bị lập hồ sơ quản lý trong thời hạn 1 năm.",
+    "expected_context": "Luật Phòng chống ma tuý 2021, Điều 23"
+  },
+  {
+    "question": "Tội tổ chức sử dụng trái phép chất ma túy chịu mức phạt tù thấp nhất là bao nhiêu năm theo Bộ luật Hình sự?",
+    "expected_answer": "Theo Bộ luật Hình sự (Điều 255), tội tổ chức sử dụng trái phép chất ma túy có mức hình phạt tù thấp nhất là 2 năm và cao nhất có thể là chung thân hoặc tử hình.",
+    "expected_context": "Bộ luật Hình sự 2015, Điều 255"
+  },
+  {
+    "question": "Các tiền chất ma túy được phân loại như thế nào theo Nghị định 57/2022/NĐ-CP?",
+    "expected_answer": "Tiền chất được quy định trong Danh mục IV gồm các hóa chất được sử dụng trong phân tích, kiểm nghiệm, nghiên cứu khoa học, điều tra tội phạm hoặc sản xuất, y tế.",
+    "expected_context": "Nghị định 57/2022/NĐ-CP, Danh mục IV"
+  },
+  {
+    "question": "Ai có trách nhiệm hỗ trợ gia đình và cơ quan chức năng trong việc cai nghiện ma túy tự nguyện?",
+    "expected_answer": "Gia đình và cá nhân có trách nhiệm phát hiện, khai báo, giúp đỡ người nghiện cai nghiện tự nguyện và hợp tác với cơ quan chức năng.",
+    "expected_context": "Luật Phòng chống ma tuý 2021, Điều 6"
+  },
+  {
+    "question": "Khối lượng chất ma túy Heroine bao nhiêu thì người tàng trữ trái phép có thể đối diện mức án tù chung thân hoặc tử hình?",
+    "expected_answer": "Tàng trữ trái phép Heroine có khối lượng 100 gam trở lên thì bị phạt tù 20 năm, tù chung thân hoặc tử hình theo Khoản 4 Điều 249 Bộ luật Hình sự.",
+    "expected_context": "Bộ luật Hình sự 2015, Điều 249, Khoản 4"
+  },
+  {
+    "question": "Người nghiện ma túy từ đủ bao nhiêu tuổi trở lên mới bị áp dụng biện pháp cai nghiện bắt buộc?",
+    "expected_answer": "Biện pháp cai nghiện bắt buộc áp dụng đối với người nghiện ma túy từ đủ 18 tuổi trở lên thuộc các trường hợp luật định; riêng người từ đủ 12 đến dưới 18 tuổi bị đưa vào cơ sở cai nghiện bắt buộc theo quy trình riêng.",
+    "expected_context": "Luật Phòng chống ma tuý 2021, Điều 32"
+  },
+  {
+    "question": "Lực lượng CSGT xử lý như thế nào đối với các đối tượng lái xe dương tính với ma túy?",
+    "expected_answer": "Tiến hành tạm giữ phương tiện, lập biên bản xử phạt hành chính mức cao nhất hoặc bàn giao cho cơ quan điều tra nếu phát hiện tàng trữ trái phép ma túy đi kèm.",
+    "expected_context": "Bài báo hai thanh niên thông chốt đâm ngã CSGT (article_03)"
   }
 ]

@@ -17,8 +17,18 @@ BM25 hoạt động thế nào:
 
 from pathlib import Path
 
-# TODO: Load corpus từ data/standardized/ hoặc từ vector store
-CORPUS: list[dict] = []  # List of {'content': str, 'metadata': dict}
+import json
+import numpy as np
+
+# Load corpus từ vector store file
+VECTORSTORE_FILE = Path(__file__).parent.parent / "data" / "vectorstore.json"
+CORPUS: list[dict] = []
+
+try:
+    if VECTORSTORE_FILE.exists():
+        CORPUS = json.loads(VECTORSTORE_FILE.read_text(encoding="utf-8"))
+except Exception:
+    pass
 
 
 def build_bm25_index(corpus: list[dict]):
@@ -28,15 +38,11 @@ def build_bm25_index(corpus: list[dict]):
     Args:
         corpus: List of {'content': str, 'metadata': dict}
     """
-    # TODO: Implement BM25 index
-    #
-    # from rank_bm25 import BM25Okapi
-    #
-    # # Tokenize - cho tiếng Việt nên dùng underthesea hoặc đơn giản split()
-    # tokenized_corpus = [doc["content"].lower().split() for doc in corpus]
-    # bm25 = BM25Okapi(tokenized_corpus)
-    # return bm25
-    raise NotImplementedError("Implement build_bm25_index")
+    from rank_bm25 import BM25Okapi
+
+    tokenized_corpus = [doc["content"].lower().split() for doc in corpus]
+    bm25 = BM25Okapi(tokenized_corpus)
+    return bm25
 
 
 def lexical_search(query: str, top_k: int = 10) -> list[dict]:
@@ -55,25 +61,46 @@ def lexical_search(query: str, top_k: int = 10) -> list[dict]:
         }
         Sorted by score descending.
     """
-    # TODO: Implement lexical search
-    #
-    # tokenized_query = query.lower().split()
-    # scores = bm25.get_scores(tokenized_query)
-    #
-    # # Get top_k indices
-    # import numpy as np
-    # top_indices = np.argsort(scores)[::-1][:top_k]
-    #
-    # results = []
-    # for idx in top_indices:
-    #     if scores[idx] > 0:
-    #         results.append({
-    #             "content": CORPUS[idx]["content"],
-    #             "score": float(scores[idx]),
-    #             "metadata": CORPUS[idx]["metadata"]
-    #         })
-    # return results
-    raise NotImplementedError("Implement lexical_search")
+    global CORPUS
+    try:
+        if VECTORSTORE_FILE.exists():
+            CORPUS = json.loads(VECTORSTORE_FILE.read_text(encoding="utf-8"))
+        else:
+            # Fallback tải corpus từ ChromaDB
+            import chromadb
+            chroma_dir = Path(__file__).parent.parent / "data" / "chroma_db"
+            if chroma_dir.exists():
+                client = chromadb.PersistentClient(path=str(chroma_dir))
+                collection = client.get_collection("news_and_legal")
+                chroma_data = collection.get(include=["documents", "metadatas"])
+                if chroma_data and chroma_data.get("documents"):
+                    CORPUS = []
+                    for doc, meta in zip(chroma_data["documents"], chroma_data["metadatas"]):
+                        CORPUS.append({
+                            "content": doc,
+                            "metadata": meta
+                        })
+    except Exception:
+        pass
+
+
+    if not CORPUS:
+        return []
+
+    bm25 = build_bm25_index(CORPUS)
+    tokenized_query = query.lower().split()
+    scores = bm25.get_scores(tokenized_query)
+
+    top_indices = np.argsort(scores)[::-1][:top_k]
+
+    results = []
+    for idx in top_indices:
+        results.append({
+            "content": CORPUS[idx]["content"],
+            "score": float(scores[idx]),
+            "metadata": CORPUS[idx].get("metadata", {})
+        })
+    return results
 
 
 if __name__ == "__main__":

@@ -44,6 +44,7 @@ class LawState(TypedDict):
     # Annotated so parallel branches can both write without conflict
     tax_result: Annotated[str, _last_wins]
     compliance_result: Annotated[str, _last_wins]
+    rag_context: Annotated[str, _last_wins]
     final_answer: str
 
 
@@ -52,16 +53,38 @@ class LawState(TypedDict):
 # ---------------------------------------------------------------------------
 
 async def analyze_law(state: LawState) -> dict:
-    """LLM analysis from a contract / general law perspective."""
+    """LLM analysis from a contract / general law perspective, using retrieval context."""
     llm = get_llm()
+    rag_data = state.get("rag_context", "[]")
+    
+    # Format retrieved RAG context for prompt
+    rag_info = ""
+    try:
+        rag_list = json.loads(rag_data)
+        if rag_list:
+            rag_info = "\n--- RETRIEVED CONTEXT FROM DATABASE ---\n"
+            for i, item in enumerate(rag_list, 1):
+                src = item.get("metadata", {}).get("source", "Unknown Source")
+                content = item.get("content", "")
+                rag_info += f"[{i}] Document: {src}\nContent: {content}\n\n"
+            rag_info += "---------------------------------------\n"
+    except Exception:
+        if rag_data and rag_data != "[]":
+            rag_info = f"\n--- RETRIEVED CONTEXT ---\n{rag_data}\n---------------------------\n"
+
+    system_prompt = (
+        "You are a senior corporate litigation attorney specialising in contract law, "
+        "tort law, and general business law. Analyse the legal aspects of the question "
+        "thoroughly, covering relevant statutes, case law principles, and liability exposure."
+    )
+    if rag_info:
+        system_prompt += (
+            "\n\nUse the retrieved legal knowledge below to assist with your analysis, "
+            "incorporating citations or references where appropriate:\n" + rag_info
+        )
+
     messages = [
-        SystemMessage(
-            content=(
-                "You are a senior corporate litigation attorney specialising in contract law, "
-                "tort law, and general business law. Analyse the legal aspects of the question "
-                "thoroughly, covering relevant statutes, case law principles, and liability exposure."
-            )
-        ),
+        SystemMessage(content=system_prompt),
         HumanMessage(content=state["question"]),
     ]
     result = await llm.ainvoke(messages)
@@ -218,6 +241,28 @@ async def aggregate(state: LawState) -> dict:
     return {"final_answer": result.content}
 
 
+async def retrieve_context(state: LawState) -> dict:
+    """Retrieve legal context and news from the RAG Agent via A2A."""
+    from common.a2a_client import delegate
+    from common.registry_client import discover
+
+    try:
+        # Discover and delegate retrieval to RAG Agent
+        endpoint = await discover("retrieve_legal_knowledge")
+        result = await delegate(
+            endpoint=endpoint,
+            question=state["question"],
+            context_id=state["context_id"],
+            trace_id=state["trace_id"],
+            depth=state.get("delegation_depth", 0) + 1,
+        )
+        logger.info("RAG Agent returned context: %d chars", len(result))
+        return {"rag_context": result}
+    except Exception as exc:
+        logger.exception("retrieve_context failed: %s", exc)
+        return {"rag_context": "[]"}
+
+
 # ---------------------------------------------------------------------------
 # Graph construction
 # ---------------------------------------------------------------------------
@@ -226,14 +271,16 @@ def create_graph():
     """Build and compile the Law Agent StateGraph."""
     graph = StateGraph(LawState)
 
+    graph.add_node("retrieve_context", retrieve_context)
     graph.add_node("analyze_law", analyze_law)
     graph.add_node("check_routing", check_routing)
     graph.add_node("call_tax", call_tax)
     graph.add_node("call_compliance", call_compliance)
     graph.add_node("aggregate", aggregate)
 
-    graph.add_edge(START, "analyze_law")
-    graph.add_edge(START, "check_routing")
+    graph.add_edge(START, "retrieve_context")
+    graph.add_edge("retrieve_context", "analyze_law")
+    graph.add_edge("retrieve_context", "check_routing")
     graph.add_edge("analyze_law", "aggregate")
 
     # Conditional parallel dispatch: after check_routing, route_to_subagents

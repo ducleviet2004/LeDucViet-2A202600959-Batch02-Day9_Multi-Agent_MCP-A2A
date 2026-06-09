@@ -15,6 +15,10 @@ try {
     echo "Starting Compliance Agent on port 10103..."
     $compliance = Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "-m compliance_agent" -NoNewWindow -PassThru
     $processes += $compliance
+
+    echo "Starting RAG Agent on port 10104..."
+    $rag = Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "-m rag_agent" -NoNewWindow -PassThru
+    $processes += $rag
     Start-Sleep -Seconds 3
 
     echo "Starting Law Agent on port 10101..."
@@ -33,6 +37,7 @@ try {
     echo "  Law Agent:        http://localhost:10101"
     echo "  Tax Agent:        http://localhost:10102"
     echo "  Compliance Agent: http://localhost:10103"
+    echo "  RAG Agent:        http://localhost:10104"
     echo ""
     echo "Press Ctrl+C to stop all services."
 

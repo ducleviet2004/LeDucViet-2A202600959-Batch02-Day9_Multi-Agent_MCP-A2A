@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo: Legal Multi-Agent System with Agentic RAG</title>
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #131a2c;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #10b981;
+            /* Emerald */
+            --primary-glow: rgba(16, 185, 129, 0.4);
+            --secondary: #6366f1;
+            /* Indigo */
+            --accent: #f59e0b;
+            /* Amber */
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Slide Container */
+        .presentation-container {
+            position: relative;
+            width: 90vw;
+            height: 80vh;
+            max-width: 1200px;
+            max-height: 800px;
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+
+        /* Slide transitions */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 60px 80px;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.95) translateY(20px);
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                visibility 0.6s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1) translateY(0);
+            z-index: 10;
+        }
+
+        /* Typography */
+        h1,
+        h2,
+        h3 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+        }
+
+        h1 {
+            font-size: 3rem;
+            line-height: 1.2;
+            background: linear-gradient(135deg, #f8fafc 30%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 2.2rem;
+            color: var(--text-main);
+            border-left: 6px solid var(--primary);
+            padding-left: 15px;
+            margin-bottom: 30px;
+        }
+
+        p {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* Layout Elements */
+        .slide-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        /* Cards and Badges */
+        .card {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: var(--primary);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px -10px rgba(16, 185, 129, 0.2);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            margin-bottom: 10px;
+            color: var(--text-main);
+        }
+
+        .card-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .highlight {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* SVG Architecture Diagram */
+        .architecture-diagram {
+            width: 100%;
+            height: 320px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Controls */
+        .controls {
+            position: fixed;
+            bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            z-index: 100;
+        }
+
+        .btn-control {
+            background-color: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-control:hover {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: var(--bg-color);
+            transform: scale(1.1);
+        }
+
+        .slide-progress-bar {
+            width: 200px;
+            height: 6px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .slide-progress {
+            height: 100%;
+            width: 16.6%;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .slide-number {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Slide Specifics */
+        .title-slide {
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .title-slide h1 {
+            font-size: 4rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            margin-bottom: 10px;
+        }
+
+        .pulse-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            padding: 12px 30px;
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border-radius: 9999px;
+            margin-top: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        /* Code Block */
+        pre {
+            background-color: #05070c;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            color: #38bdf8;
+            /* Light blue code tint */
+        }
+
+        .code-keyword {
+            color: #f43f5e;
+        }
+
+        .code-string {
+            color: #10b981;
+        }
+
+        .code-comment {
+            color: #64748b;
+        }
+
+        /* Glowing connectors for nodes */
+        .agent-node {
+            animation: glow-pulse 3s infinite alternate;
+        }
+
+        @keyframes glow-pulse {
+            0% {
+                filter: drop-shadow(0 0 2px rgba(99, 102, 241, 0.4));
+            }
+
+            100% {
+                filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.8));
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="presentation-container">
+
+        <!-- Slide 1: Welcome -->
+        <div class="slide title-slide active" id="slide-1">
+            <div class="slide-content">
+                <div class="card-icon" style="font-size: 4rem;">⚖️</div>
+                <h1>Agentic RAG Multi-Agent System</h1>
+                <p style="font-size: 1.3rem; max-width: 700px; margin: 0 auto 30px;">
+                    Nâng cấp Hệ thống Trợ lý Pháp lý đa tác nhân với công nghệ RAG Lai cục bộ (Local Hybrid RAG)
+                </p>
+                <div
+                    style="font-size: 0.95rem; color: var(--primary); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;">
+                    Báo cáo & Demo thực nghiệm hệ thống
+                </div>
+                <div>
+                    <button class="pulse-btn" onclick="nextSlide()">Bắt đầu Demo ➔</button>
+                </div>
+            </div>
+            <div class="slide-number">Slide 1 / 6</div>
+        </div>
+
+        <!-- Slide 2: Architecture -->
+        <div class="slide" id="slide-2">
+            <h2>Kiến trúc Hệ thống & Giao thức A2A</h2>
+            <div class="slide-content">
+                <div class="grid-2">
+                    <div>
+                        <p style="margin-bottom: 20px;">
+                            Hệ thống sử dụng giao thức truyền thông <span class="highlight">A2A (Agent-to-Agent)</span>
+                            cho phép các tác nhân đăng ký năng lực (Capabilities) và điều phối công việc linh hoạt:
+                        </p>
+                        <ul style="list-style-type: none; display: flex; flex-direction: column; gap: 15px;">
+                            <li>🟢 <strong>Customer Agent:</strong> Điểm tiếp nhận truy vấn chính thức của người dùng.
+                            </li>
+                            <li>🔵 <strong>Law Agent (Orchestrator):</strong> Phân tích điều khoản luật và điều phối các
+                                nhánh chuyên môn song song.</li>
+                            <li>🔴 <strong>RAG Agent (New Component):</strong> Chịu trách nhiệm truy xuất bối cảnh pháp
+                                luật và tin tức chính xác từ cơ sở dữ liệu cục bộ.</li>
+                        </ul>
+                    </div>
+                    <div class="architecture-diagram">
+                        <svg width="400" height="280" viewBox="0 0 400 280">
+                            <!-- Connectors -->
+                            <path d="M 200 50 L 200 120" stroke="#6366f1" stroke-width="2" stroke-dasharray="5,5" />
+                            <path d="M 200 120 L 70 210" stroke="#10b981" stroke-width="2" />
+                            <path d="M 200 120 L 200 210" stroke="#10b981" stroke-width="2" />
+                            <path d="M 200 120 L 330 210" stroke="#10b981" stroke-width="2" />
+
+                            <!-- Registry Node -->
+                            <rect x="130" y="20" width="140" height="40" rx="8" fill="#1e293b" stroke="#6366f1"
+                                stroke-width="2" />
+                            <text x="200" y="45" fill="#f8fafc" font-size="12" font-weight="bold"
+                                text-anchor="middle">Registry (10000)</text>
+
+                            <!-- Customer Agent Node -->
+                            <circle cx="200" cy="120" r="30" fill="#131a2c" stroke="#10b981" stroke-width="3"
+                                class="agent-node" />
+                            <text x="200" y="124" fill="#10b981" font-size="10" font-weight="bold"
+                                text-anchor="middle">Customer</text>
+
+                            <!-- Law Node -->
+                            <rect x="20" y="210" width="100" height="45" rx="8" fill="#131a2c" stroke="#f59e0b"
+                                stroke-width="2" />
+                            <text x="70" y="236" fill="#f59e0b" font-size="11" font-weight="bold"
+                                text-anchor="middle">Law (10101)</text>
+
+                            <!-- Specialty Agents -->
+                            <!-- RAG Agent -->
+                            <rect x="150" y="210" width="100" height="45" rx="8" fill="#10b981" stroke="#34d399"
+                                stroke-width="2" />
+                            <text x="200" y="236" fill="#0b0f19" font-size="11" font-weight="bold"
+                                text-anchor="middle">RAG (10104)</text>
+
+                            <!-- Other Sub-agents -->
+                            <rect x="280" y="210" width="100" height="45" rx="8" fill="#131a2c" stroke="#a78bfa"
+                                stroke-width="2" />
+                            <text x="330" y="236" fill="#a78bfa" font-size="10" font-weight="bold"
+                                text-anchor="middle">Tax & Comp</text>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="slide-number">Slide 2 / 6</div>
+        </div>
+
+        <!-- Slide 3: RAG Pipeline -->
+        <div class="slide" id="slide-3">
+            <h2>Giải pháp Local Hybrid RAG Pipeline</h2>
+            <div class="slide-content">
+                <div class="grid-3" style="margin-bottom: 30px;">
+                    <div class="card">
+                        <div class="card-icon">🔍</div>
+                        <div class="card-title">1. Dense Semantic Search</div>
+                        <div class="card-desc">
+                            Sử dụng model nhúng siêu nhẹ <span class="highlight">all-MiniLM-L6-v2</span> để tính toán
+                            Cosine Similarity cục bộ, trả về các đoạn có ngữ nghĩa gần nhất mà không cần GPU/API đám
+                            mây.
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">📝</div>
+                        <div class="card-title">2. Sparse Lexical Search</div>
+                        <div class="card-desc">
+                            Tích hợp thuật toán <span class="highlight">BM25 (rank-bm25)</span> để tìm kiếm chính xác
+                            các từ khóa số hiệu điều luật, thuật ngữ pháp lý đặc thù.
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🔀</div>
+                        <div class="card-title">3. RRF Fusion & Fallback</div>
+                        <div class="card-desc">
+                            Gộp kết quả bằng <span class="highlight">Reciprocal Rank Fusion (RRF)</span>. Khi chất lượng
+                            tìm kiếm dưới ngưỡng, hệ thống tự động fallback sang quét text thô (Vectorless search) để
+                            chống bỏ sót thông tin.
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <p style="font-size: 0.95rem;">
+                        💡 <strong>Lợi thế:</strong> Toàn bộ dữ liệu được index vào file pickle cục bộ, giảm thiểu tối
+                        đa chi phí hệ thống và bảo mật dữ liệu pháp lý của khách hàng tuyệt đối.
+                    </p>
+                </div>
+            </div>
+            <div class="slide-number">Slide 3 / 6</div>
+        </div>
+
+        <!-- Slide 4: LangGraph Integration -->
+        <div class="slide" id="slide-4">
+            <h2>Tích Hợp Luồng Xử Lý LangGraph</h2>
+            <div class="slide-content">
+                <div class="grid-2">
+                    <div>
+                        <p style="margin-bottom: 15px;">
+                            Trong <strong>Law Agent (graph.py)</strong>, đồ thị LangGraph được cải tiến bằng cách bổ
+                            sung một node tìm kiếm bối cảnh ngay khi bắt đầu:
+                        </p>
+                        <pre>
+<span class="code-comment"># Khởi tạo đồ thị StateGraph</span>
+graph = StateGraph(LawState)
+
+<span class="code-comment"># Đăng ký các node xử lý</span>
+graph.add_node(<span class="code-string">"retrieve_context"</span>, retrieve_context)
+graph.add_node(<span class="code-string">"analyze_law"</span>, analyze_law)
+graph.add_node(<span class="code-string">"check_routing"</span>, check_routing)
+
+<span class="code-comment"># Liên kết các cạnh chuyển tiếp</span>
+graph.add_edge(START, <span class="code-string">"retrieve_context"</span>)
+graph.add_edge(<span class="code-string">"retrieve_context"</span>, <span class="code-string">"analyze_law"</span>)
+graph.add_edge(<span class="code-string">"retrieve_context"</span>, <span class="code-string">"check_routing"</span>)
+</pre>
+                    </div>
+                    <div>
+                        <p style="margin-bottom: 15px;">
+                            Luồng dữ liệu được tối ưu để <span class="highlight">retrieve_context</span> chạy trước, sau
+                            đó nạp kết quả vào bối cảnh nhắc (prompt context) cho <span
+                                class="highlight">analyze_law</span> và song song hóa logic định tuyến con.
+                        </p>
+                        <div class="card"
+                            style="background-color: rgba(245, 158, 11, 0.05); border-color: rgba(245, 158, 11, 0.2);">
+                            <p style="font-size: 0.95rem; color: var(--accent);">
+                                ⚡️ <strong>Tính Song Song:</strong> Việc kích hoạt hai cạnh cùng lúc từ retrieve_context
+                                giúp thực hiện phân tích luật và định tuyến các tác nhân phụ (Tax/Compliance) song song,
+                                giữ vững hiệu năng tổng thể của đồ thị!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="slide-number">Slide 4 / 6</div>
+        </div>
+
+        <!-- Slide 5: Performance & Optimizations -->
+        <div class="slide" id="slide-5">
+            <h2>Đo lường Hiệu năng & Tối ưu hóa</h2>
+            <div class="slide-content">
+                <div class="grid-2">
+                    <div class="card"
+                        style="display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                        <div style="font-size: 3rem; font-weight: 800; color: var(--primary); margin-bottom: 10px;">
+                            30.95s
+                        </div>
+                        <div class="card-title">Thời gian phản hồi trung bình</div>
+                        <p style="font-size: 0.95rem;">
+                            Nhờ thiết lập song song hoá luồng kiểm tra định tuyến và phân tích pháp lý, thời gian phản
+                            hồi E2E đã giảm từ <span class="highlight">33.42s</span> xuống còn <span
+                                class="highlight">30.95s</span> (Giảm 7.4% độ trễ tổng thể hệ thống).
+                        </p>
+                    </div>
+                    <div class="card"
+                        style="display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                        <div class="card-title" style="color: var(--secondary);">✨ Trải nghiệm với Giao diện Streamlit
+                            UI</div>
+                        <p style="font-size: 0.95rem; margin-bottom: 15px;">
+                            Chúng ta đã xây dựng một Dashboard Chat hoàn chỉnh bằng <strong>Streamlit</strong>, cho
+                            phép:
+                        </p>
+                        <ul
+                            style="list-style-type: none; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem;">
+                            <li>✔️ Nhập câu hỏi trực tiếp thông qua hộp thoại chat.</li>
+                            <li>✔️ Kiểm tra trạng thái Online/Offline của 6 dịch vụ cục bộ.</li>
+                            <li>✔️ Gợi ý nhanh các câu hỏi mẫu liên quan tới luật ma túy & tin tức nghệ sĩ 2024.</li>
+                            <li>✔️ Hiển thị chi tiết trích dẫn RAG và độ trễ phản hồi (Latency).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="slide-number">Slide 5 / 6</div>
+        </div>
+
+        <!-- Slide 6: Summary -->
+        <div class="slide" id="slide-6">
+            <h2>Kết luận & Hướng phát triển</h2>
+            <div class="slide-content">
+                <div class="grid-2" style="margin-bottom: 20px;">
+                    <div>
+                        <p style="margin-bottom: 15px;">
+                            Nâng cấp hệ thống lên <strong>Agentic RAG Multi-Agent</strong> đã chứng minh sự kết hợp hoàn
+                            hảo giữa mô hình ngôn ngữ lớn (LLM) và tri thức lưu trữ cục bộ:
+                        </p>
+                        <ul
+                            style="display: flex; flex-direction: column; gap: 10px; padding-left: 20px; font-size: 0.95rem; color: var(--text-muted);">
+                            <li>Chính xác hóa phân tích pháp lý bằng dữ liệu văn bản gốc có trích dẫn nguồn.</li>
+                            <li>Khả năng định tuyến tối ưu song song hóa giữ hiệu năng tốt nhất.</li>
+                            <li>Giao diện trực quan cho người dùng cuối tương tác trực tiếp.</li>
+                        </ul>
+                    </div>
+                    <div class="card"
+                        style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.1);">
+                        <h4 style="margin-bottom: 10px; color: var(--primary);">🚀 Bước tiếp theo:</h4>
+                        <ol
+                            style="padding-left: 20px; font-size: 0.9rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 8px;">
+                            <li>Đưa các tài liệu pháp quy PDF đầy đủ của chính phủ vào thư mục standardized để tự động
+                                index lại.</li>
+                            <li>Bổ sung thêm mô hình Reranker nâng cao (như Jina Reranker v2) khi nâng cấp hạ tầng mạng.
+                            </li>
+                            <li>Mở rộng thêm tác nhân chuyên môn về Sở hữu trí tuệ / Doanh nghiệp.</li>
+                        </ol>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <p style="font-weight: 700; color: var(--primary); font-size: 1.2rem;">Cảm ơn các bạn đã lắng nghe
+                        phần thuyết trình!</p>
+                </div>
+            </div>
+            <div class="slide-number">Slide 6 / 6</div>
+        </div>
+
+    </div>
+
+    <!-- Navigation controls -->
+    <div class="controls">
+        <button class="btn-control" onclick="prevSlide()">◀</button>
+        <div class="slide-progress-bar">
+            <div class="slide-progress" id="progress-indicator"></div>
+        </div>
+        <button class="btn-control" onclick="nextSlide()">▶</button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 6;
+
+        function showSlide(slideIndex) {
+            // Bound checking
+            if (slideIndex < 1) slideIndex = 1;
+            if (slideIndex > totalSlides) slideIndex = totalSlides;
+
+            // Remove active class from current slide
+            document.querySelector('.slide.active').classList.remove('active');
+
+            // Add active class to target slide
+            document.getElementById(`slide-${slideIndex}`).classList.add('active');
+
+            currentSlide = slideIndex;
+
+            // Update progress bar
+            const percent = (currentSlide / totalSlides) * 100;
+            document.getElementById('progress-indicator').style.width = `${percent}%`;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                showSlide(currentSlide + 1);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) {
+                showSlide(currentSlide - 1);
+            }
+        }
+
+        // Support keyboard arrow keys
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'ArrowRight' || event.key === ' ') {
+                nextSlide();
+            } else if (event.key === 'ArrowLeft') {
+                prevSlide();
+            }
+        });
+    </script>
+</body>
+
+</html>

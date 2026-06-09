@@ -15,7 +15,7 @@ from typing import Annotated, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.constants import Send
-from langgraph.graph import END, StateGraph
+from langgraph.graph import END, START, StateGraph
 
 from common.llm import get_llm
 
@@ -79,6 +79,20 @@ async def check_routing(state: LawState) -> dict:
         logger.info("Max delegation depth reached (%d); skipping sub-agents", depth)
         return {"needs_tax": False, "needs_compliance": False}
 
+    # Optimisation: Fast keyword-based routing
+    question_lower = state["question"].lower()
+    needs_tax = False
+    needs_compliance = False
+    if any(kw in question_lower for kw in ["tax", "irs", "evasion", "penalt", "fbar", "fatca", "thuế"]):
+        needs_tax = True
+    if any(kw in question_lower for kw in ["compliance", "sec", "sox", "aml", "fcpa", "regulatory", "governance", "tuân thủ"]):
+        needs_compliance = True
+
+    if needs_tax or needs_compliance:
+        logger.info("Fast keyword routing decision: needs_tax=%s needs_compliance=%s", needs_tax, needs_compliance)
+        return {"needs_tax": needs_tax, "needs_compliance": needs_compliance}
+
+    # Fallback to LLM routing if keywords do not match
     llm = get_llm()
     messages = [
         SystemMessage(
@@ -218,8 +232,9 @@ def create_graph():
     graph.add_node("call_compliance", call_compliance)
     graph.add_node("aggregate", aggregate)
 
-    graph.set_entry_point("analyze_law")
-    graph.add_edge("analyze_law", "check_routing")
+    graph.add_edge(START, "analyze_law")
+    graph.add_edge(START, "check_routing")
+    graph.add_edge("analyze_law", "aggregate")
 
     # Conditional parallel dispatch: after check_routing, route_to_subagents
     # returns a list of Send objects (to call_tax, call_compliance, or aggregate)
